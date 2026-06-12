@@ -1,0 +1,6 @@
+{
+  "name": "Electric Inventory Manager",
+  "description": "Stock management system for electrical products with Material 3 styling, featuring dynamic product lists, dashboard calculations, and low-stock warnings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

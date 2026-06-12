@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --color-pagebg: #F7F9FC;
+  --color-sidebarbg: #F3F4F9;
+  --color-brand: #005FB0;
+  --color-brand-light: #DDE2F0;
+  --color-brand-dark: #001D35;
+  --color-text-primary: #1B1B1F;
+  --color-text-secondary: #44474E;
+  --color-border-subtle: #E1E2E9;
+  --color-warning-primary: #B3261E;
+  --color-warning-light: #F9DEDC;
+  --color-inputbg: #EDF0F7;
+  --color-border-accent: #C1C7CE;
+}
+
+.dark {
+  --color-pagebg: #0C0D11;
+  --color-sidebarbg: #14161C;
+  --color-brand: #3A8DFF;
+  --color-brand-light: #1D232F;
+  --color-brand-dark: #FFFFFF;
+  --color-text-primary: #F0F1F5;
+  --color-text-secondary: #9FA4AF;
+  --color-border-subtle: #242730;
+  --color-warning-primary: #FF6E6E;
+  --color-warning-light: #2D1414;
+  --color-inputbg: #1E2028;
+  --color-border-accent: #333640;
+}
+
+@theme {
+  --color-pagebg: var(--color-pagebg);
+  --color-sidebarbg: var(--color-sidebarbg);
+  --color-brand: var(--color-brand);
+  --color-brand-light: var(--color-brand-light);
+  --color-brand-dark: var(--color-brand-dark);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-warning-primary: var(--color-warning-primary);
+  --color-warning-light: var(--color-warning-light);
+  --color-inputbg: var(--color-inputbg);
+  --color-border-accent: var(--color-border-accent);
+}
+
+.dark .bg-white {
+  background-color: #14161C !important;
+}
+
+.dark input, 
+.dark textarea, 
+.dark select {
+  color-scheme: dark;
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@utility animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom styling for horizontal scrollbars */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
