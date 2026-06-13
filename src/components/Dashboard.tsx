@@ -16,7 +16,7 @@ import {
   WifiOff
 } from 'lucide-react';
 import { Product, InventoryLog } from '../types';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useOnlineStatus } from '../useOnlineStatus';
 
 interface DashboardProps {
   products: Product[];
@@ -46,10 +46,20 @@ export default function Dashboard({
   let totalUsedUnits = 0;
 
   products.forEach(p => {
-    if (p.isUsed) {
-      totalUsedUnits += p.quantity;
+    if (p.batches && p.batches.length > 0) {
+      p.batches.forEach(b => {
+        if (b.isUsed) {
+          totalUsedUnits += b.quantity;
+        } else {
+          totalNewUnits += b.quantity;
+        }
+      });
     } else {
-      totalNewUnits += p.quantity;
+      if (p.isUsed) {
+        totalUsedUnits += p.quantity;
+      } else {
+        totalNewUnits += p.quantity;
+      }
     }
   });
 
@@ -121,7 +131,7 @@ export default function Dashboard({
 
           <button 
             id="quick-add-btn"
-            onClick={() => onViewChange('add')}
+            onClick={() => onViewChange('add-product')}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-brand hover:brightness-110 text-white font-sans font-bold text-xs uppercase tracking-wider px-6 py-3.5 rounded-full shadow-md hover:shadow-lg transition-all transform hover:scale-[1.01] active:scale-95 cursor-pointer border border-brand/20"
           >
             <Plus className="h-5 w-5 stroke-[3] shrink-0" />

@@ -1,3 +1,12 @@
+export interface ProductBatch {
+  id: string;
+  isUsed: boolean;
+  quantity: number;
+  originalQuantity: number;
+  addedAt: string;
+  usedAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -12,6 +21,7 @@ export interface Product {
   isUsed: boolean;
   addedAt: string;
   usedAt?: string;
+  batches?: ProductBatch[];
 }
 
 export type Category = 

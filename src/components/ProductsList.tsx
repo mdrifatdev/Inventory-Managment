@@ -28,7 +28,7 @@ import {
   CloudLightning
 } from 'lucide-react';
 import { Product, Category, InventoryLog } from '../types';
-import { ProductCard } from '../components/ProductCard';
+import { getProductBatches } from '../batchUtils';
 
 interface ProductsListProps {
   products: Product[];
@@ -397,26 +397,160 @@ export default function ProductsList({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
-          {sortedProducts.map((prod) => (
-              <ProductCard
+          {sortedProducts.map((prod) => {
+            const isLow = prod.quantity <= prod.minThreshold;
+            const isOut = prod.quantity === 0;
+
+            return (
+              <div 
+                id={`product-card-${prod.id}`}
                 key={prod.id}
-                product={prod}
-                onInspect={handleInspectProduct}
-                onIncrement={handleStockIncrement}
-                onDecrement={handleStockDecrement}
-                onHistory={(e, p) => {
-                  e.stopPropagation();
-                  setHistoryProduct(p);
-                  setHistoryFilter('all');
-                }}
-                onEdit={(e, p) => {
-                  e.stopPropagation();
-                  onEdit(p);
-                }}
-                onDelete={(e, p) => confirmDelete(e, p.id, p.name)}
-              />
-            )
-          )}
+                onClick={() => handleInspectProduct(prod)}
+                className="group relative bg-white border border-border-subtle rounded-3xl overflow-hidden cursor-pointer shadow-xs hover:shadow-md hover:border-brand/35 transition-all duration-300 flex flex-col justify-between"
+              >
+                {/* Image Section with Google Photos subtle metadata card overlay */}
+                <div className="relative aspect-video sm:aspect-square bg-sidebarbg overflow-hidden shrink-0 border-b border-border-subtle">
+                  <img 
+                    src={prod.image_url} 
+                    alt={prod.name} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80';
+                    }}
+                  />
+
+                  {/* Badges on image */}
+                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start">
+                    <span className="bg-brand-dark/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-wider">
+                      {prod.sku}
+                    </span>
+
+                    {(prod as any).synced === false && (
+                      <span className="bg-amber-500/90 backdrop-blur-xs text-white font-sans text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs border border-amber-600/10 flex items-center gap-1 animate-pulse" title="Saved locally. Pending upload sync.">
+                        <CloudLightning className="h-2.5 w-2.5 shrink-0" />
+                        <span>Pending Sync</span>
+                      </span>
+                    )}
+                    
+                    {isOut ? (
+                      <span className="bg-warning-primary text-white font-sans text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs border border-warning-primary/20 flex items-center gap-1">
+                        <span>Out of Stock</span>
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                      </span>
+                    ) : isLow ? (
+                      <span className="bg-warning-light text-warning-primary font-sans text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs border border-warning-light/35 flex items-center gap-1">
+                        <span>Low Stock Alert</span>
+                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Stock quantity overlay bottom right */}
+                  <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-xs text-text-primary text-[11px] font-extrabold font-sans min-w-6 h-6 px-1.5 flex items-center justify-center rounded-full border border-border-subtle shadow-xs">
+                    {prod.quantity}
+                  </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-text-secondary font-mono flex items-center justify-between">
+                      <span className="truncate max-w-[120px] font-semibold text-brand">{prod.category}</span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${prod.isUsed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-[#005FB0]'}`}>
+                        {prod.isUsed ? 'Used' : 'New'}
+                      </span>
+                    </div>
+                    <h3 className="font-sans font-bold text-sm text-text-primary leading-snug group-hover:text-brand transition-colors line-clamp-2">
+                      {prod.name}
+                    </h3>
+                  </div>
+
+                  {/* Bottom Counter block with increment/decrement */}
+                  <div className="pt-2.5 border-t border-border-subtle flex flex-col gap-2">
+                    <div className="flex items-center justify-between font-sans">
+                      <span className="text-[9px] font-mono tracking-wider font-bold text-text-secondary uppercase">STORE QTY</span>
+                      <span className={`font-mono text-xs font-bold ${isOut ? 'text-warning-primary' : isLow ? 'text-warning-primary' : 'text-text-primary'}`}>
+                        {prod.quantity} units
+                      </span>
+                    </div>
+
+                    {/* Stock quick adjusted controller buttons */}
+                    <div className="flex items-center gap-1.5 flex-row-reverse">
+                      <button
+                        id={`dec-qty-${prod.id}`}
+                        type="button"
+                        disabled={prod.quantity <= 0}
+                        onClick={(e) => handleStockDecrement(e, prod)}
+                        className="flex-1 py-2 px-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 disabled:opacity-35 disabled:hover:bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+                        title="Record Stock Used"
+                      >
+                        <Minus className="h-3 w-3 stroke-[2.5]" />
+                        <span>Stock Used</span>
+                      </button>
+
+                      {/* Standalone product history quick trigger in the middle */}
+                      <button
+                        id={`view-history-${prod.id}`}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation(); // Avoid opening the details modal
+                          setHistoryProduct(prod);
+                          setHistoryFilter('all');
+                        }}
+                        className="p-2 sm:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-xxs shrink-0"
+                        title="View Sell & Audit History"
+                      >
+                        <History className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        id={`inc-qty-${prod.id}`}
+                        type="button"
+                        onClick={(e) => handleStockIncrement(e, prod)}
+                        className="flex-1 py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 border border-emerald-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+                        title="Record Stock Addition"
+                      >
+                        <Plus className="h-3 w-3 stroke-[2.5]" />
+                        <span>Add Stock</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hover overlay menu for advanced operations (Edit, Delete) */}
+                <div className="px-4 py-2 border-t border-border-subtle bg-sidebarbg/50 flex items-center justify-between rounded-b-3xl">
+                  <span className="text-[10px] font-sans text-text-secondary font-semibold flex items-center gap-1">
+                    <Info className="h-3 w-3 text-text-secondary" /> Press to open specs
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      id={`edit-${prod.id}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(prod);
+                      }}
+                      className="p-1.5 bg-white border border-border-subtle text-text-secondary hover:bg-brand-light hover:text-brand-dark rounded-lg transition-colors cursor-pointer"
+                      title="Edit Specifications"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      id={`del-${prod.id}`}
+                      type="button"
+                      onClick={(e) => confirmDelete(e, prod.id, prod.name)}
+                      className="p-1.5 bg-white border border-border-subtle text-text-secondary hover:bg-warning-light hover:text-warning-primary rounded-lg transition-colors cursor-pointer"
+                      title="Delete Product"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -519,6 +653,55 @@ export default function ProductsList({
                 <div className="text-[10px] font-mono text-text-secondary flex items-center justify-between pt-2">
                   <span>SYSTEM METADATA ID: {activeInspectedProduct.id}</span>
                   <span>UPDATED: {new Date(activeInspectedProduct.updated_at).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Batches breakdown list */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-text-secondary">
+                    Active Stock Batches (FIFO Order)
+                  </span>
+                  <span className="text-[10px] bg-brand-light text-brand-dark px-2.5 py-0.5 rounded-full font-bold">
+                    {getProductBatches(activeInspectedProduct).filter(b => b.quantity > 0).length} Active Batches
+                  </span>
+                </div>
+                <div className="bg-sidebarbg rounded-2xl border border-border-subtle overflow-hidden">
+                  <table className="w-full text-left font-sans text-xs border-collapse divide-y divide-border-subtle">
+                    <thead>
+                      <tr className="bg-white/40 text-text-secondary font-semibold uppercase text-[9px] tracking-wider">
+                        <th className="py-2.5 px-4 font-bold">Batch Sequence / Date Added</th>
+                        <th className="py-2.5 px-4 font-bold">Condition</th>
+                        <th className="py-2.5 px-4 font-bold">Current Stock</th>
+                        <th className="py-2.5 px-4 font-bold">Original Batch Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle/40 text-text-secondary">
+                      {getProductBatches(activeInspectedProduct).map((batch, idx) => (
+                        <tr key={batch.id} className={`hover:bg-white/60 transition-colors ${batch.quantity === 0 ? 'opacity-35 italic bg-slate-50' : ''}`}>
+                          <td className="py-2.5 px-4">
+                            <div className="font-bold text-text-primary text-[11px]">
+                              Batch #{idx + 1} {batch.quantity === 0 ? '[DEPLETED]' : idx === 0 ? '[INITIAL]' : '[BATCH]'}
+                            </div>
+                            <div className="text-[9.5px] text-text-secondary mt-0.5 font-mono">
+                              {new Date(batch.addedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 font-extrabold font-sans">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${batch.isUsed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-[#005FB0]'}`}>
+                              {batch.isUsed ? 'Used' : 'New'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 font-mono font-bold text-text-primary">
+                            {batch.quantity} units
+                          </td>
+                          <td className="py-2.5 px-4 font-mono text-[10.5px]">
+                            {batch.originalQuantity} units
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

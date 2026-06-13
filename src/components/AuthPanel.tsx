@@ -12,7 +12,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { getSupabaseClient } from '../lib/supabaseClient';
+import { getSupabaseClient } from '../supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AuthPanelProps {

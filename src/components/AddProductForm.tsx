@@ -14,9 +14,9 @@ import {
   ImageIcon
 } from 'lucide-react';
 import { Product, Category, Settings } from '../types';
-import { loadSettings } from '../lib/supabaseClient';
+import { loadSettings } from '../supabaseClient';
 
-interface ProductFormProps {
+interface AddProductFormProps {
   productToEdit?: Product | null;
   onSave: (product: Omit<Product, 'id' | 'updated_at'> & { id?: string }) => void;
   onCancel: () => void;
@@ -41,7 +41,7 @@ const PRESET_IMAGES = [
   { name: 'Ventilation Fan', url: 'https://images.unsplash.com/photo-1618944847828-82e943c3dba7?w=600&auto=format&fit=crop&q=80' },
 ];
 
-export default function ProductForm({ productToEdit, onSave, onCancel }: ProductFormProps) {
+export default function AddProductForm({ productToEdit, onSave, onCancel }: AddProductFormProps) {
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [category, setCategory] = useState<Category>('Cables & Wiring');
@@ -58,6 +58,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
   const [dragActive, setDragActive] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  // Auto-fill values if we are editing an existing item
   useEffect(() => {
     if (productToEdit) {
       setName(productToEdit.name);
@@ -80,6 +81,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         setUsedAt('');
       }
     } else {
+      // Auto-generate starting SKU
       generateSmartSku();
     }
   }, [productToEdit]);
@@ -90,6 +92,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     setSku(`EL-${catCode}-${randomNum}`);
   };
 
+  // Drag and drop event handlers
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -116,6 +119,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     }
   };
 
+  // Real Cloudinary image uploader with local FileReader fallback
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     setFeedback(null);
@@ -139,12 +143,16 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           setImageUrl(data.secure_url || data.url);
           setFeedback({ type: 'success', text: 'Image successfully uploaded to your Cloudinary storage!' });
         } else {
+          console.error("Cloudinary request returned status:", response.status);
           throw new Error("Cloudinary upload failed");
         }
       } catch (err) {
+        console.error("Cloudinary upload error", err);
+        // Fall back to local FileReader Base64
         convertToBase64(file);
       }
     } else {
+      // Offline local Base64 Fallback
       convertToBase64(file);
     }
   };
@@ -198,8 +206,11 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12 animate-fade-in">
+      
+      {/* Header Back banner */}
       <div className="flex items-center gap-3">
         <button 
+          id="back-add-btn"
           onClick={onCancel}
           className="p-2 text-text-secondary bg-white border border-border-subtle hover:bg-sidebarbg rounded-full shadow-xs transition-colors cursor-pointer"
         >
@@ -224,6 +235,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           <CheckCircle2 className="h-5 w-5 shrink-0" />
           <p className="text-xs font-sans font-medium">{feedback.text}</p>
           <button 
+            id="dismiss-fb"
             onClick={() => setFeedback(null)} 
             className="ml-auto hover:bg-black/5 p-0.5 rounded-full cursor-pointer"
           >
@@ -232,13 +244,17 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         </div>
       )}
 
+      {/* Form Card */}
       <form onSubmit={handleSubmit} className="bg-white border border-border-subtle rounded-3xl overflow-hidden shadow-xs p-6 md:p-8 space-y-6">
+        
+        {/* Row 1: Name and Brand */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1.5">
             <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
               Product Name *
             </label>
             <input 
+              id="field-name"
               type="text" 
               required
               value={name}
@@ -253,6 +269,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               BRAND / MANUFACTURER
             </label>
             <input 
+              id="field-brand"
               type="text" 
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
@@ -262,6 +279,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           </div>
         </div>
 
+        {/* Categories Chips Selection */}
         <div className="space-y-2">
           <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
             Product Classification (Category)
@@ -271,6 +289,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               const matches = category === cat;
               return (
                 <button
+                  id={`chip-${cat.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                   type="button"
                   key={cat}
                   onClick={() => setCategory(cat)}
@@ -287,11 +306,13 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           </div>
         </div>
 
+        {/* Row 2: SKU and Pricing / Condition */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="space-y-1.5">
             <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold flex justify-between items-center">
               <span>SKU CODE</span>
               <button 
+                id="generate-sku-btn"
                 type="button" 
                 onClick={generateSmartSku}
                 className="text-[10px] text-brand hover:underline flex items-center gap-0.5 font-bold font-sans cursor-pointer"
@@ -300,6 +321,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               </button>
             </label>
             <input 
+              id="field-sku"
               type="text" 
               required
               value={sku}
@@ -345,6 +367,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               <span>{isUsed ? "USED / ACQU. DATE" : "ADDED DATE"}</span>
             </label>
             <input 
+              id="field-date"
               type="date"
               required
               value={isUsed ? (usedAt || addedAt) : addedAt}
@@ -364,6 +387,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               INITIAL STOCK LEVEL (QTY)
             </label>
             <input 
+              id="field-qty"
               type="number" 
               min="0"
               required
@@ -375,6 +399,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           </div>
         </div>
 
+        {/* Critical safety threshold */}
         <div className="p-4 bg-warning-light/80 border border-warning-primary/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex gap-2 text-warning-primary">
             <AlertTriangle className="h-5 w-5 shrink-0 text-warning-primary mt-0.5" />
@@ -388,6 +413,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           <div className="flex items-center gap-1.5 shrink-0 font-sans">
             <span className="text-xs text-text-secondary font-semibold">Warning Trigger:</span>
             <input
+              id="field-threshold"
               type="number"
               min="0"
               value={minThreshold}
@@ -398,11 +424,13 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           </div>
         </div>
 
+        {/* Text Area Description */}
         <div className="space-y-1.5">
           <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
             Technical Specification & Description
           </label>
           <textarea 
+            id="field-desc"
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -411,12 +439,14 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           />
         </div>
 
+        {/* Image upload section (M3 Drag box & presets shortcuts) */}
         <div className="space-y-3">
           <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
             Media Attachment (URL / Upload / Presets)
           </label>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Drag Area */}
             <div 
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
@@ -450,6 +480,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               </label>
             </div>
 
+            {/* Manual URL Input or Preset picker */}
             <div className="space-y-3 flex flex-col justify-between">
               <div className="space-y-1.5 bg-sidebarbg p-4 border border-border-subtle rounded-2xl">
                 <label className="text-[10px] font-mono tracking-wider font-bold text-text-secondary">
@@ -457,6 +488,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                 </label>
                 <div className="flex gap-2 mt-1">
                   <input
+                    id="field-image-url"
                     type="url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
@@ -465,6 +497,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                   />
                   {imageUrl && (
                     <button
+                      id="clear-image-btn"
                       type="button"
                       onClick={() => setImageUrl('')}
                       className="px-2 text-warning-primary border border-border-subtle bg-white rounded-lg hover:bg-warning-light cursor-pointer"
@@ -476,6 +509,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                 </div>
               </div>
 
+              {/* Presets Grid */}
               <div className="space-y-1.5 flex-1 flex flex-col justify-end">
                 <span className="text-[10px] font-mono font-bold text-text-secondary block tracking-wider uppercase">
                   Click to Use Electric Stock Presets
@@ -483,6 +517,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {PRESET_IMAGES.map((preset, idx) => (
                     <button
+                      id={`preset-${idx}`}
                       type="button"
                       key={preset.url}
                       onClick={() => setImageUrl(preset.url)}
@@ -497,6 +532,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
             </div>
           </div>
 
+          {/* Active Preview */}
           {imageUrl && (
             <div className="mt-3 flex items-center gap-3 p-3 border border-border-subtle rounded-2xl bg-sidebarbg animate-fade-in">
               <img 
@@ -519,8 +555,10 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           )}
         </div>
 
+        {/* Cancel / Submit Buttons */}
         <div className="pt-6 border-t border-border-subtle flex items-center justify-end gap-3.5">
           <button
+            id="form-cancel-btn"
             type="button"
             onClick={onCancel}
             className="px-5 py-2.5 rounded-full border border-border-subtle hover:bg-sidebarbg text-text-secondary font-sans font-medium text-sm transition-colors cursor-pointer"
@@ -529,6 +567,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
           </button>
           
           <button
+            id="form-submit-btn"
             type="submit"
             className="px-7 py-2.5 rounded-full bg-brand hover:brightness-110 text-white font-sans font-bold text-sm shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
