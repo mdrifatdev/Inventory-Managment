@@ -15,7 +15,7 @@ import {
   User as UserIcon
 } from 'lucide-react';
 
-interface SidebarProps {
+interface NavbarProps {
   currentView: string;
   onViewChange: (view: string) => void;
   lowStockCount: number;
@@ -24,14 +24,14 @@ interface SidebarProps {
   sessionUser: SupabaseUser | null;
 }
 
-export default function Sidebar({ 
+export default function Navbar({ 
   currentView, 
   onViewChange, 
   lowStockCount,
   isDarkMode,
   onToggleDarkMode,
   sessionUser
-}: SidebarProps) {
+}: NavbarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navigationItems = [

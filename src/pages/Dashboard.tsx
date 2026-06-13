@@ -16,7 +16,7 @@ import {
   WifiOff
 } from 'lucide-react';
 import { Product, InventoryLog } from '../types';
-import { useOnlineStatus } from '../useOnlineStatus';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface DashboardProps {
   products: Product[];
@@ -46,20 +46,10 @@ export default function Dashboard({
   let totalUsedUnits = 0;
 
   products.forEach(p => {
-    if (p.batches && p.batches.length > 0) {
-      p.batches.forEach(b => {
-        if (b.isUsed) {
-          totalUsedUnits += b.quantity;
-        } else {
-          totalNewUnits += b.quantity;
-        }
-      });
+    if (p.isUsed) {
+      totalUsedUnits += p.quantity;
     } else {
-      if (p.isUsed) {
-        totalUsedUnits += p.quantity;
-      } else {
-        totalNewUnits += p.quantity;
-      }
+      totalNewUnits += p.quantity;
     }
   });
 

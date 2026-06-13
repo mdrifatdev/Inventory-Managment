@@ -9,7 +9,7 @@ import {
   Zap,
   RefreshCw
 } from 'lucide-react';
-import { loadSettings, saveSettings, fetchProducts, getSupabaseClient } from '../supabaseClient';
+import { loadSettings, saveSettings, fetchProducts, getSupabaseClient } from '../lib/supabaseClient';
 import { Settings } from '../types';
 
 interface SettingsPanelProps {
