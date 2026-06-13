@@ -8,65 +8,72 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: "Super-Flex 2.5mm Copper Cable",
     sku: "CAB-SF-25-CU",
     category: "Cables & Wiring",
-    price: 45.50,
     quantity: 120,
     minThreshold: 30,
     image_url: "https://images.unsplash.com/photo-1558449028-b53a39d100fc?w=600&auto=format&fit=crop&q=80",
     brand: "SuperFlex Cables",
     description: "Flame-retardant 2.5sqmm copper cables suitable for domestic wiring applications.",
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    isUsed: false,
+    addedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "prod-2",
     name: "M3 Smart Dimmer Switch",
     sku: "SW-M3-DIM-01",
     category: "Switches & Sockets",
-    price: 18.90,
     quantity: 15,
     minThreshold: 20, // Should trigger warning
     image_url: "https://images.unsplash.com/photo-1595183864453-e5d7df9d9df3?w=600&auto=format&fit=crop&q=80",
     brand: "LumenHome",
     description: "Modern touch-sensitive dimmer with smart home assistant integration.",
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    isUsed: false,
+    addedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "prod-3",
     name: "Ultra-Bright 12W LED Bulbs (Pack of 5)",
     sku: "LGT-LED-12W-5P",
     category: "Lighting & Bulbs",
-    price: 24.00,
     quantity: 85,
     minThreshold: 15,
     image_url: "https://images.unsplash.com/photo-1550985616-10810253b84d?w=600&auto=format&fit=crop&q=80",
     brand: "AuraLight",
     description: "Energy efficient Cool White LED bulbs with 25,000 hour lifetime.",
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    isUsed: true,
+    addedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+    usedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "prod-4",
     name: "32A Double Pole Miniature Circuit Breaker",
     sku: "CB-MCB-32A-DP",
     category: "Circuit Breakers & Fuses",
-    price: 12.50,
     quantity: 8,
     minThreshold: 10, // Should trigger warning
     image_url: "https://images.unsplash.com/photo-1621259182978-f09e5e2ab09a?w=600&auto=format&fit=crop&q=80",
     brand: "SafeVolt",
     description: "Heavy duty short-circuit and overload protector for modern switchboards.",
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    isUsed: false,
+    addedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
   },
   {
     id: "prod-5",
     name: "High-Velocity Exhaust Fan 8\"",
     sku: "FAN-EXH-08-HV",
     category: "Fans & Ventilation",
-    price: 32.99,
     quantity: 45,
     minThreshold: 12,
     image_url: "https://images.unsplash.com/photo-1618944847828-82e943c3dba7?w=600&auto=format&fit=crop&q=80",
     brand: "WindFlow",
     description: "Whisper-quiet powerful ventilation fan with rust-proof ABS shutters.",
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    isUsed: true,
+    addedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    usedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
@@ -97,19 +104,20 @@ const PRODUCTS_KEY = "eim_products";
 const LOGS_KEY = "eim_logs";
 
 export function loadSettings(): Settings {
+  let savedSettings: Partial<Settings> = {};
   try {
     const saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      savedSettings = JSON.parse(saved);
     }
   } catch (e) {
     console.error("Failed to load settings", e);
   }
   return {
-    supabaseUrl: "",
-    supabaseAnonKey: "",
-    cloudinaryCloudName: "",
-    cloudinaryUploadPreset: "",
+    supabaseUrl: savedSettings.supabaseUrl || ((import.meta as any).env.VITE_SUPABASE_URL || "").trim(),
+    supabaseAnonKey: savedSettings.supabaseAnonKey || ((import.meta as any).env.VITE_SUPABASE_ANON_KEY || "").trim(),
+    cloudinaryCloudName: savedSettings.cloudinaryCloudName || ((import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || "").trim(),
+    cloudinaryUploadPreset: savedSettings.cloudinaryUploadPreset || ((import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET || "").trim(),
   };
 }
 

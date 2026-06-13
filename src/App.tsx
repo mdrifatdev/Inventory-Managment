@@ -4,15 +4,24 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { loadSettings } from './supabaseClient';
 import { 
-  fetchProducts, 
-  fetchLogs, 
-  insertProduct, 
-  updateProductInDB, 
-  deleteProductFromDB, 
-  addInventoryLog,
-  loadSettings
-} from './supabaseClient';
+  getLocalProducts, 
+  getLocalLogs, 
+  insertOfflineProduct, 
+  updateOfflineProductInDB, 
+  deleteOfflineProductFromDB, 
+  addOfflineInventoryLog,
+  syncOfflineData
+} from './offlineStore';
+import { useNetworkStatus } from './useNetworkStatus';
+import { 
+  Wifi, 
+  WifiOff, 
+  RefreshCw, 
+  CheckCircle, 
+  CloudAlert 
+} from 'lucide-react';
 import { Product, InventoryLog } from './types';
 import { 
   getProductBatches, 
@@ -45,6 +54,11 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [productsListFilter, setProductsListFilter] = useState<'all' | 'low-stock' | 'out-of-stock'>('all');
 
+  // Network offline-first sync states and triggers
+  const { isOnline, pendingCount, isChecking } = useNetworkStatus();
+  const [syncingProgress, setSyncingProgress] = useState<{ current: number; total: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // Logs search query
   const [logsQuery, setLogsQuery] = useState('');
 
@@ -66,8 +80,8 @@ export default function App() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const prodsData = await fetchProducts();
-      const logsData = await fetchLogs();
+      const prodsData = await getLocalProducts();
+      const logsData = await getLocalLogs();
       setProducts(prodsData);
       setLogs(logsData);
     } catch (e) {
@@ -76,6 +90,31 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  // Helper trigger to synchronize offline queues to Supabase
+  const handleForceSync = async () => {
+    try {
+      setSyncError(null);
+      const res = await syncOfflineData((current, total) => {
+        setSyncingProgress({ current, total });
+      });
+      if (!res.success) {
+        setSyncError(res.errorMsg || 'Failed to complete database synchronization');
+      }
+      await loadAllData();
+    } catch (err: any) {
+      setSyncError(err?.message || "Sync failed");
+    } finally {
+      setSyncingProgress(null);
+    }
+  };
+
+  // Auto-sync when transitioning online or when pending items count updates
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      handleForceSync();
+    }
+  }, [isOnline, pendingCount]);
 
   useEffect(() => {
     loadAllData();
@@ -101,7 +140,7 @@ export default function App() {
 
       if (existingProductWithSKU) {
         // This is a reorder / replenishment batch of an existing product! Merge it.
-        const updatedWithBatch = addProductToBatches(existingProductWithSKU, payload.quantity, payload.price);
+        const updatedWithBatch = addProductToBatches(existingProductWithSKU, payload.quantity, payload.isUsed ?? false, payload.usedAt);
         
         // Also copy over any fresh details if edited
         updatedWithBatch.name = payload.name;
@@ -111,14 +150,14 @@ export default function App() {
         updatedWithBatch.category = payload.category || updatedWithBatch.category;
         updatedWithBatch.minThreshold = payload.minThreshold;
 
-        const updated = await updateProductInDB(updatedWithBatch);
+        const updated = await updateOfflineProductInDB(updatedWithBatch);
 
-        await addInventoryLog(
+        await addOfflineInventoryLog(
           updated.id,
           updated.name,
           'addition',
           payload.quantity,
-          `Replenished stock with new batch: +${payload.quantity} units at different price of $${payload.price.toFixed(2)}/unit.`
+          `Replenished stock with new batch: +${payload.quantity} units (${payload.isUsed ? 'Used' : 'New'}).`
         );
       } else if (payload.id) {
         // Find existing to log quantity difference correctly
@@ -129,8 +168,8 @@ export default function App() {
 
         if (qtyDiff !== 0) {
           if (qtyDiff > 0) {
-            // Addition: append new batch with current price
-            updatedPayload = addProductToBatches(existing!, qtyDiff, payload.price);
+            // Addition: append new batch with current condition
+            updatedPayload = addProductToBatches(existing!, qtyDiff, payload.isUsed ?? false, payload.usedAt);
           } else {
             // Reduction: deplete FIFO
             const { updatedProduct } = sellProductFromBatches(existing!, Math.abs(qtyDiff));
@@ -141,7 +180,7 @@ export default function App() {
           updatedPayload.batches = existing?.batches || getProductBatches(existing!);
         }
 
-        const updated = await updateProductInDB(updatedPayload);
+        const updated = await updateOfflineProductInDB(updatedPayload);
         
         let note = `Updated device details & specifications for SKU: ${payload.sku}`;
         let logType: InventoryLog['type'] = 'update';
@@ -151,7 +190,7 @@ export default function App() {
           note = `Stock level adjusted manually by ${qtyDiff > 0 ? `+${qtyDiff}` : qtyDiff} units on specification edit.`;
         }
 
-        await addInventoryLog(updated.id, updated.name, logType, qtyDiff, note);
+        await addOfflineInventoryLog(updated.id, updated.name, logType, qtyDiff, note);
       } else {
         // Inserting a totally new product SKU: initialize with its first batch
         const productWithInitBatch: Omit<Product, 'id' | 'updated_at'> = {
@@ -159,16 +198,17 @@ export default function App() {
           batches: [
             {
               id: `batch-${Date.now()}-init`,
-              price: payload.price,
+              isUsed: payload.isUsed ?? false,
               quantity: payload.quantity,
               originalQuantity: payload.quantity,
-              addedAt: new Date().toISOString()
+              addedAt: payload.addedAt || new Date().toISOString(),
+              usedAt: payload.usedAt
             }
           ]
         };
 
-        const newlyAdded = await insertProduct(productWithInitBatch);
-        await addInventoryLog(
+        const newlyAdded = await insertOfflineProduct(productWithInitBatch);
+        await addOfflineInventoryLog(
           newlyAdded.id, 
           newlyAdded.name, 
           'addition', 
@@ -195,9 +235,9 @@ export default function App() {
 
     setLoading(true);
     try {
-      const ok = await deleteProductFromDB(id);
+      const ok = await deleteOfflineProductFromDB(id);
       if (ok) {
-        await addInventoryLog(
+        await addOfflineInventoryLog(
           id, 
           prodToRemove.name, 
           'deletion', 
@@ -217,7 +257,7 @@ export default function App() {
     id: string, 
     newQty: number, 
     logType: 'addition' | 'reduction',
-    transactionPrice?: number,
+    isUsedCustom?: boolean,
     customNotes?: string
   ) => {
     const original = products.find(p => p.id === id);
@@ -230,26 +270,25 @@ export default function App() {
     let logNotes = "";
 
     if (logType === 'addition') {
-      const priceToUse = transactionPrice !== undefined ? transactionPrice : original.price;
-      updatedPayload = addProductToBatches(original, Math.abs(diff), priceToUse);
+      const usedStatusToUse = isUsedCustom !== undefined ? isUsedCustom : (original.isUsed ?? false);
+      updatedPayload = addProductToBatches(original, Math.abs(diff), usedStatusToUse);
       
-      const transPriceFormatted = priceToUse.toFixed(2);
       if (customNotes && customNotes.trim() !== "") {
-        logNotes = `${customNotes.trim()} [Replenished at $${transPriceFormatted}/unit]`;
+        logNotes = `${customNotes.trim()} [Added: ${usedStatusToUse ? 'Used' : 'New'} stock]`;
       } else {
-        logNotes = `Dispatched addition: +${Math.abs(diff)} units in new batch at $${transPriceFormatted}/unit.`;
+        logNotes = `Dispatched addition: +${Math.abs(diff)} units in new batch (${usedStatusToUse ? 'Used' : 'New'}).`;
       }
     } else {
       // FIFO depletion from batches!
-      const { updatedProduct, priceDetails, notes } = sellProductFromBatches(original, Math.abs(diff), customNotes);
+      const { updatedProduct, notes } = sellProductFromBatches(original, Math.abs(diff), customNotes);
       updatedPayload = updatedProduct;
       logNotes = notes;
     }
 
     try {
-      const updated = await updateProductInDB(updatedPayload);
+      const updated = await updateOfflineProductInDB(updatedPayload);
       
-      await addInventoryLog(
+      await addOfflineInventoryLog(
         id, 
         original.name, 
         logType, 
@@ -265,7 +304,7 @@ export default function App() {
         setProducts(prodsCopy);
       }
       
-      const newLogs = await fetchLogs();
+      const newLogs = await getLocalLogs();
       setLogs(newLogs);
     } catch (err) {
       console.error("Failed quick quantity adjustment", err);
@@ -317,6 +356,76 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* Offline Sync & Connectivity Dashboard Banner */}
+            <div className="mb-6 bg-white dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xxs font-sans animate-fade-in">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className={`p-2.5 rounded-2xl flex items-center justify-center ${
+                  isOnline 
+                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                    : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                }`}>
+                  {isOnline ? (
+                    <Wifi className="h-5 w-5 animate-pulse" />
+                  ) : (
+                    <WifiOff className="h-5 w-5" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-sans font-bold text-xs text-text-primary dark:text-slate-100 uppercase tracking-wide">
+                      {isOnline ? 'Online (Real-Time Cloud Sync)' : 'Offline Mode (Local-First Storage Active)'}
+                    </h3>
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" style={{ display: isOnline ? 'inline-block' : 'none' }} />
+                  </div>
+                  <p className="text-[11px] text-text-secondary dark:text-slate-400 leading-tight">
+                    {isOnline 
+                      ? 'Local database (Dexie.js) is in live synchronization with Supabase Cloud.' 
+                      : 'All creations, quantity adjustments, and logs are saved instantly to IndexedDB locally.'
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Status information & syncing controls */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {pendingCount > 0 && (
+                  <div className="flex items-center gap-1.5 bg-amber-50/70 border border-amber-200/50 text-amber-800 text-[11px] font-bold font-mono px-3 py-1.5 rounded-2xl">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    {pendingCount} modifications pending
+                  </div>
+                )}
+                {syncingProgress && (
+                  <div className="flex items-center gap-1 text-[11px] font-mono text-slate-500">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-slate-500 shrink-0" />
+                    <span>Syncing {syncingProgress.current}/{syncingProgress.total}...</span>
+                  </div>
+                )}
+                {syncError && (
+                  <div className="text-[11px] font-semibold text-rose-600 flex items-center gap-1">
+                    <CloudAlert className="h-4.5 w-4.5 shrink-0" />
+                    <span>{syncError}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  id="offline-sync-btn"
+                  onClick={handleForceSync}
+                  disabled={syncingProgress !== null}
+                  className={`px-4 py-2 font-sans font-extrabold text-xs rounded-2xl cursor-pointer transition-all flex items-center gap-1.5 ${
+                    pendingCount > 0 
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncingProgress ? 'animate-spin' : ''}`} />
+                  {pendingCount > 0 ? 'Force Upload Sync' : 'Test Sync'}
+                </button>
+              </div>
+            </div>
+
             {/* View Switching */}
             {currentView === 'dashboard' && (
               <Dashboard 

@@ -22,7 +22,10 @@ import {
   Coins,
   TrendingUp,
   TrendingDown,
-  History
+  History,
+  Calendar,
+  Clock,
+  CloudLightning
 } from 'lucide-react';
 import { Product, Category, InventoryLog } from '../types';
 import { getProductBatches } from '../batchUtils';
@@ -37,7 +40,7 @@ interface ProductsListProps {
     id: string, 
     newQty: number, 
     actionType: 'addition' | 'reduction',
-    transactionPrice?: number,
+    isUsedCustom?: boolean,
     customNotes?: string
   ) => void;
   onViewChange: (view: string) => void;
@@ -55,7 +58,7 @@ const ALL_CATEGORIES: (Category | "All")[] = [
   "Other Accessories"
 ];
 
-type SortOption = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc' | 'qty-asc' | 'qty-desc';
+type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'date-asc' | 'qty-asc' | 'qty-desc' | 'condition-new-first' | 'condition-used-first';
 
 export default function ProductsList({ 
   products, 
@@ -78,12 +81,24 @@ export default function ProductsList({
 
   // Selected product for standalone history modal
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'added' | 'used'>('all');
+
+  // States for Stock Used popup / modal
+  const [usageProduct, setUsageProduct] = useState<Product | null>(null);
+  const [usageQty, setUsageQty] = useState<number>(1);
+  const [usageNotes, setUsageNotes] = useState<string>('');
+  const [usageError, setUsageError] = useState<string | null>(null);
+
+  // States for Add Stock popup / modal
+  const [additionProduct, setAdditionProduct] = useState<Product | null>(null);
+  const [additionQty, setAdditionQty] = useState<number>(1);
+  const [additionNotes, setAdditionNotes] = useState<string>('');
+  const [additionError, setAdditionError] = useState<string | null>(null);
 
   // States for Quick Stock Transaction Form
   const [transType, setTransType] = useState<'addition' | 'reduction'>('addition');
   const [transQty, setTransQty] = useState<number>(1);
-  const [priceMode, setPriceMode] = useState<'listed' | 'custom'>('listed');
-  const [customPriceVal, setCustomPriceVal] = useState<string>('');
+  const [isUsedAction, setIsUsedAction] = useState<boolean>(false);
   const [transNotes, setTransNotes] = useState<string>('');
   const [transError, setTransError] = useState<string | null>(null);
   const [transSuccess, setTransSuccess] = useState<boolean>(false);
@@ -103,14 +118,13 @@ export default function ProductsList({
     setInspectedProduct(prod);
     setTransType('addition');
     setTransQty(1);
-    setPriceMode('listed');
-    setCustomPriceVal(prod.price.toString());
+    setIsUsedAction(prod.isUsed || false);
     setTransNotes('');
     setTransError(null);
     setTransSuccess(false);
   };
 
-  // Execute quick stock transaction (addition/reduction with custom price option)
+  // Execute quick stock transaction (addition/reduction with custom isUsed option)
   const handleExecuteTransaction = () => {
     if (!activeInspectedProduct) return;
     
@@ -118,10 +132,6 @@ export default function ProductsList({
       setTransError("Quantity must be greater than zero.");
       return;
     }
-
-    const priceToUse = priceMode === 'listed' 
-      ? activeInspectedProduct.price 
-      : parseFloat(customPriceVal) || activeInspectedProduct.price;
 
     let targetQty = activeInspectedProduct.quantity;
     if (transType === 'addition') {
@@ -139,7 +149,7 @@ export default function ProductsList({
       activeInspectedProduct.id,
       targetQty,
       transType,
-      priceToUse,
+      isUsedAction,
       transNotes
     );
 
@@ -182,14 +192,18 @@ export default function ProductsList({
         return a.name.localeCompare(b.name);
       case 'name-desc':
         return b.name.localeCompare(a.name);
-      case 'price-asc':
-        return a.price - b.price;
-      case 'price-desc':
-        return b.price - a.price;
+      case 'date-desc':
+        return new Date(b.addedAt || 0).getTime() - new Date(a.addedAt || 0).getTime();
+      case 'date-asc':
+        return new Date(a.addedAt || 0).getTime() - new Date(b.addedAt || 0).getTime();
       case 'qty-asc':
         return a.quantity - b.quantity;
       case 'qty-desc':
         return b.quantity - a.quantity;
+      case 'condition-new-first':
+        return (a.isUsed ? 1 : 0) - (b.isUsed ? 1 : 0);
+      case 'condition-used-first':
+        return (b.isUsed ? 1 : 0) - (a.isUsed ? 1 : 0);
       default:
         return 0;
     }
@@ -197,14 +211,62 @@ export default function ProductsList({
 
   const handleStockIncrement = (e: React.MouseEvent, prod: Product) => {
     e.stopPropagation(); // Avoid opening the inspecting modal
-    onUpdateQuantity(prod.id, prod.quantity + 1, 'addition');
+    setAdditionProduct(prod);
+    setAdditionQty(1);
+    setAdditionNotes('');
+    setAdditionError(null);
+  };
+
+  const handleExecuteAddition = () => {
+    if (!additionProduct) return;
+    if (additionQty <= 0) {
+      setAdditionError("Please enter a valid quantity greater than zero.");
+      return;
+    }
+
+    const targetQty = additionProduct.quantity + additionQty;
+    onUpdateQuantity(
+      additionProduct.id,
+      targetQty,
+      'addition',
+      false,
+      additionNotes || 'Stock added quick addition'
+    );
+
+    setAdditionProduct(null);
   };
 
   const handleStockDecrement = (e: React.MouseEvent, prod: Product) => {
     e.stopPropagation(); // Avoid opening the inspecting modal
     if (prod.quantity > 0) {
-      onUpdateQuantity(prod.id, prod.quantity - 1, 'reduction');
+      setUsageProduct(prod);
+      setUsageQty(1);
+      setUsageNotes('');
+      setUsageError(null);
     }
+  };
+
+  const handleExecuteUsage = () => {
+    if (!usageProduct) return;
+    if (usageQty <= 0) {
+      setUsageError("Please enter a valid quantity greater than zero.");
+      return;
+    }
+    if (usageQty > usageProduct.quantity) {
+      setUsageError(`Insufficient stock. Only ${usageProduct.quantity} units are available.`);
+      return;
+    }
+
+    const targetQty = usageProduct.quantity - usageQty;
+    onUpdateQuantity(
+      usageProduct.id,
+      targetQty,
+      'reduction',
+      false,
+      usageNotes || 'Stock used quick reduction'
+    );
+
+    setUsageProduct(null);
   };
 
   const confirmDelete = (e: React.MouseEvent, id: string, name: string) => {
@@ -275,10 +337,12 @@ export default function ProductsList({
               >
                 <option value="name-asc">A to Z Alphabetical</option>
                 <option value="name-desc">Z to A Alphabetical</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="qty-asc">In-Stock: Low to High</option>
-                <option value="qty-desc">In-Stock: High to Low</option>
+                <option value="date-desc">Acquisition Date: Newest</option>
+                <option value="date-asc">Acquisition Date: Oldest</option>
+                <option value="qty-asc">In-Stock Volume: Low to High</option>
+                <option value="qty-desc">In-Stock Volume: High to Low</option>
+                <option value="condition-new-first">Condition: New First</option>
+                <option value="condition-used-first">Condition: Used First</option>
               </select>
             </div>
           </div>
@@ -357,10 +421,17 @@ export default function ProductsList({
                   />
 
                   {/* Badges on image */}
-                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
+                  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 items-start">
                     <span className="bg-brand-dark/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-wider">
                       {prod.sku}
                     </span>
+
+                    {(prod as any).synced === false && (
+                      <span className="bg-amber-500/90 backdrop-blur-xs text-white font-sans text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs border border-amber-600/10 flex items-center gap-1 animate-pulse" title="Saved locally. Pending upload sync.">
+                        <CloudLightning className="h-2.5 w-2.5 shrink-0" />
+                        <span>Pending Sync</span>
+                      </span>
+                    )}
                     
                     {isOut ? (
                       <span className="bg-warning-primary text-white font-sans text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs border border-warning-primary/20 flex items-center gap-1">
@@ -386,7 +457,9 @@ export default function ProductsList({
                   <div className="space-y-1">
                     <div className="text-[11px] text-text-secondary font-mono flex items-center justify-between">
                       <span className="truncate max-w-[120px] font-semibold text-brand">{prod.category}</span>
-                      <span className="font-bold text-text-primary">${prod.price.toFixed(2)}</span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${prod.isUsed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-[#005FB0]'}`}>
+                        {prod.isUsed ? 'Used' : 'New'}
+                      </span>
                     </div>
                     <h3 className="font-sans font-bold text-sm text-text-primary leading-snug group-hover:text-brand transition-colors line-clamp-2">
                       {prod.name}
@@ -403,17 +476,17 @@ export default function ProductsList({
                     </div>
 
                     {/* Stock quick adjusted controller buttons */}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-row-reverse">
                       <button
                         id={`dec-qty-${prod.id}`}
                         type="button"
                         disabled={prod.quantity <= 0}
                         onClick={(e) => handleStockDecrement(e, prod)}
                         className="flex-1 py-2 px-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 disabled:opacity-35 disabled:hover:bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
-                        title="Sell Stock (Decrement by 1 unit)"
+                        title="Record Stock Used"
                       >
                         <Minus className="h-3 w-3 stroke-[2.5]" />
-                        <span>Sell Stock</span>
+                        <span>Stock Used</span>
                       </button>
 
                       {/* Standalone product history quick trigger in the middle */}
@@ -423,6 +496,7 @@ export default function ProductsList({
                         onClick={(e) => {
                           e.stopPropagation(); // Avoid opening the details modal
                           setHistoryProduct(prod);
+                          setHistoryFilter('all');
                         }}
                         className="p-2 sm:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-xxs shrink-0"
                         title="View Sell & Audit History"
@@ -435,7 +509,7 @@ export default function ProductsList({
                         type="button"
                         onClick={(e) => handleStockIncrement(e, prod)}
                         className="flex-1 py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 border border-emerald-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
-                        title="Add Stock (Increment by 1 unit)"
+                        title="Record Stock Addition"
                       >
                         <Plus className="h-3 w-3 stroke-[2.5]" />
                         <span>Add Stock</span>
@@ -529,8 +603,10 @@ export default function ProductsList({
               {/* Attributes grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6 border-b border-border-subtle text-xs font-sans">
                 <div className="bg-sidebarbg p-4 border border-border-subtle rounded-2xl flex flex-col justify-between shadow-xxs">
-                  <span className="text-text-secondary font-mono uppercase text-[9px] font-bold">UNIT PRICE</span>
-                  <span className="text-brand font-sans font-bold text-md mt-1">${activeInspectedProduct.price.toFixed(2)}</span>
+                  <span className="text-text-secondary font-mono uppercase text-[9px] font-bold">EQUIPMENT CONDITION</span>
+                  <span className={`font-sans font-bold text-[13px] mt-1 px-2 py-0.5 rounded-md text-center inline-block ${activeInspectedProduct.isUsed ? 'bg-amber-100 text-amber-850' : 'bg-blue-100 text-[#005FB0]'}`}>
+                    {activeInspectedProduct.isUsed ? 'Used / Salvaged' : 'Brand New'}
+                  </span>
                 </div>
                 <div className="bg-sidebarbg p-4 border border-border-subtle rounded-2xl flex flex-col justify-between shadow-xxs">
                   <span className="text-text-secondary font-mono uppercase text-[9px] font-bold">ON STORE LIMIT</span>
@@ -539,9 +615,9 @@ export default function ProductsList({
                   </span>
                 </div>
                 <div className="bg-sidebarbg p-4 border border-border-subtle rounded-2xl flex flex-col justify-between shadow-xxs">
-                  <span className="text-text-secondary font-mono uppercase text-[9px] font-bold">CUMULATIVE VALUE</span>
-                  <span className="text-text-primary font-sans font-bold text-md mt-1">
-                    ${(activeInspectedProduct.price * activeInspectedProduct.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <span className="text-text-secondary font-mono uppercase text-[9px] font-bold">ACQUISITION DATE</span>
+                  <span className="text-text-primary font-mono font-bold text-xs mt-1">
+                    {activeInspectedProduct.addedAt ? new Date(activeInspectedProduct.addedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Initial Checkin'}
                   </span>
                 </div>
                 <div className="bg-sidebarbg p-4 border border-border-subtle rounded-2xl flex flex-col justify-between shadow-xxs">
@@ -595,7 +671,7 @@ export default function ProductsList({
                     <thead>
                       <tr className="bg-white/40 text-text-secondary font-semibold uppercase text-[9px] tracking-wider">
                         <th className="py-2.5 px-4 font-bold">Batch Sequence / Date Added</th>
-                        <th className="py-2.5 px-4 font-bold">Unit Price</th>
+                        <th className="py-2.5 px-4 font-bold">Condition</th>
                         <th className="py-2.5 px-4 font-bold">Current Stock</th>
                         <th className="py-2.5 px-4 font-bold">Original Batch Qty</th>
                       </tr>
@@ -605,14 +681,16 @@ export default function ProductsList({
                         <tr key={batch.id} className={`hover:bg-white/60 transition-colors ${batch.quantity === 0 ? 'opacity-35 italic bg-slate-50' : ''}`}>
                           <td className="py-2.5 px-4">
                             <div className="font-bold text-text-primary text-[11px]">
-                              Batch #{idx + 1} {batch.quantity === 0 ? '[DEPLETED]' : idx === 0 ? '[INITIAL]' : '[REPLY]'}
+                              Batch #{idx + 1} {batch.quantity === 0 ? '[DEPLETED]' : idx === 0 ? '[INITIAL]' : '[BATCH]'}
                             </div>
                             <div className="text-[9.5px] text-text-secondary mt-0.5 font-mono">
                               {new Date(batch.addedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </td>
-                          <td className="py-2.5 px-4 font-extrabold text-brand font-sans">
-                            ${batch.price.toFixed(2)}
+                          <td className="py-2.5 px-4 font-extrabold font-sans">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${batch.isUsed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-[#005FB0]'}`}>
+                              {batch.isUsed ? 'Used' : 'New'}
+                            </span>
                           </td>
                           <td className="py-2.5 px-4 font-mono font-bold text-text-primary">
                             {batch.quantity} units
@@ -637,8 +715,24 @@ export default function ProductsList({
                   <span className="text-[10px] font-mono text-text-secondary uppercase">Unified Ledger</span>
                 </div>
 
-                {/* Switcher Buttons (Add Units / Buy vs Sell Units) */}
+                {/* Switcher Buttons (Stock Used vs Add Units) */}
                 <div className="flex rounded-xl bg-white border border-border-subtle p-1 gap-1 text-xs font-semibold relative">
+                  <button
+                    id="trans-type-sell"
+                    type="button"
+                    onClick={() => {
+                      setTransType('reduction');
+                      setTransError(null);
+                    }}
+                    className={`flex-1 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      transType === 'reduction'
+                        ? 'bg-amber-600 text-white shadow-sm font-bold'
+                        : 'text-text-secondary hover:bg-sidebarbg hover:text-text-primary'
+                    }`}
+                  >
+                    <Minus className="h-4 w-4 stroke-[2.5]" />
+                    Sell Stock
+                  </button>
                   <button
                     id="trans-type-add"
                     type="button"
@@ -654,22 +748,6 @@ export default function ProductsList({
                   >
                     <Plus className="h-4 w-4 stroke-[2.5]" />
                     Add Units
-                  </button>
-                  <button
-                    id="trans-type-sell"
-                    type="button"
-                    onClick={() => {
-                      setTransType('reduction');
-                      setTransError(null);
-                    }}
-                    className={`flex-1 py-2.5 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                      transType === 'reduction'
-                        ? 'bg-amber-600 text-white shadow-sm font-bold'
-                        : 'text-text-secondary hover:bg-sidebarbg hover:text-text-primary'
-                    }`}
-                  >
-                    <Minus className="h-4 w-4 stroke-[2.5]" />
-                    Sell Unit
                   </button>
                 </div>
 
@@ -704,63 +782,41 @@ export default function ProductsList({
                     </div>
                   </div>
 
-                  {/* Ask for same or custom price */}
+                  {/* Stock Condition Toggle */}
                   <div className="space-y-1.5">
-                    <label className="text-text-secondary font-bold font-mono uppercase text-[9px]">Price Decision Mode</label>
+                    <label className="text-text-secondary font-bold font-mono uppercase text-[9px]">Stock Condition (For additions)</label>
                     <div className="grid grid-cols-2 gap-1 bg-white p-1 border border-border-subtle rounded-xl text-[10px]">
                       <button
-                        id="price-opt-listed"
+                        id="cond-opt-new"
                         type="button"
-                        onClick={() => {
-                          setPriceMode('listed');
-                          setCustomPriceVal(activeInspectedProduct.price.toString());
-                        }}
+                        onClick={() => setIsUsedAction(false)}
                         className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer font-bold ${
-                          priceMode === 'listed'
-                            ? 'bg-brand text-white font-bold shadow-xxs'
+                          !isUsedAction
+                            ? 'bg-[#005FB0] text-white shadow-xxs'
                             : 'text-text-secondary hover:text-text-primary'
                         }`}
                       >
-                        Same Listed Price (${activeInspectedProduct.price.toFixed(2)})
+                        Brand New
                       </button>
                       <button
-                        id="price-opt-custom"
+                        id="cond-opt-used"
                         type="button"
-                        onClick={() => setPriceMode('custom')}
+                        onClick={() => setIsUsedAction(true)}
                         className={`py-1.5 px-1 rounded-lg transition-all text-center cursor-pointer font-bold ${
-                          priceMode === 'custom'
-                            ? 'bg-brand text-white font-bold shadow-xxs'
+                          isUsedAction
+                            ? 'bg-warning-primary text-white shadow-xxs'
                             : 'text-text-secondary hover:text-text-primary'
                         }`}
                       >
-                        Different Price ($)
+                        Used / Salvaged
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Custom price field */}
-                {priceMode === 'custom' && (
-                  <div className="space-y-1.5 animate-fade-in">
-                    <label className="text-text-secondary font-bold font-mono uppercase text-[9px]" htmlFor="custom-price-field">Custom Transaction Unit Price ($)</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary font-mono text-xs font-semibold">$</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        id="custom-price-field"
-                        value={customPriceVal}
-                        onChange={(e) => setCustomPriceVal(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full bg-white border border-border-subtle focus:outline-none focus:border-brand rounded-xl pl-7.5 pr-4 py-2 font-mono text-xs text-text-primary font-bold shadow-xxs"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Notes log */}
                 <div className="space-y-1.5">
-                  <label className="text-text-secondary font-bold font-mono uppercase text-[9px]" htmlFor="trans-notes-field">Transaction Audit Notes (Optional)</label>
+                  <label className="text-text-secondary font-bold font-mono uppercase text-[9px]" htmlFor="trans-notes-field">Note (Optional)</label>
                   <input
                     type="text"
                     id="trans-notes-field"
@@ -769,7 +825,7 @@ export default function ProductsList({
                     placeholder={
                       transType === 'addition'
                         ? "e.g., Supplier bulk warehousing batch replenishment"
-                        : "e.g., Walk-in customer direct counter invoice sale"
+                        : "e.g., Dispatch of parts for renovation or electrical project installation"
                     }
                     className="w-full bg-white border border-border-subtle focus:outline-none focus:border-brand rounded-xl px-3.5 py-2 font-sans text-xs text-text-primary shadow-xxs"
                   />
@@ -804,12 +860,12 @@ export default function ProductsList({
                   {transType === 'addition' ? (
                     <>
                       <Plus className="h-4 w-4 stroke-[2.5]" />
-                      Add {transQty} Units @ ${parseFloat(priceMode === 'listed' ? activeInspectedProduct.price.toString() : customPriceVal).toFixed(2)}
+                      Add {transQty} {isUsedAction ? 'Used' : 'New'} Units
                     </>
                   ) : (
                     <>
                       <Minus className="h-4 w-4 stroke-[2.5]" />
-                      Sell {transQty} Units @ ${parseFloat(priceMode === 'listed' ? activeInspectedProduct.price.toString() : customPriceVal).toFixed(2)}
+                      Sell {transQty} Units
                     </>
                   )}
                 </button>
@@ -954,81 +1010,164 @@ export default function ProductsList({
               </div>
             </div>
 
+            {/* Filter buttons to make history better */}
+            <div className="px-5 py-2 bg-white border-b border-border-subtle flex justify-center items-center">
+              <div className="bg-slate-100 p-1 rounded-xl flex gap-1 items-center shadow-xxs">
+                <button
+                  id="filter-hist-all"
+                  type="button"
+                  onClick={() => setHistoryFilter('all')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    historyFilter === 'all'
+                      ? 'bg-white text-text-primary shadow-xs font-extrabold'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  All History
+                </button>
+                <button
+                  id="filter-hist-added"
+                  type="button"
+                  onClick={() => setHistoryFilter('added')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    historyFilter === 'added'
+                      ? 'bg-white text-emerald-800 shadow-xs font-extrabold'
+                      : 'text-text-secondary hover:text-emerald-700'
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                  Stock Added
+                </button>
+                <button
+                  id="filter-hist-used"
+                  type="button"
+                  onClick={() => setHistoryFilter('used')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    historyFilter === 'used'
+                      ? 'bg-white text-amber-800 shadow-xs font-extrabold'
+                      : 'text-text-secondary hover:text-amber-700'
+                  }`}
+                >
+                  <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                  Stock Used
+                </button>
+              </div>
+            </div>
+
             {/* List area */}
-            <div className="p-5 overflow-y-auto space-y-4 max-h-[50vh] scrollbar-hidden">
+            <div className="p-5 overflow-y-auto space-y-4 max-h-[48vh] scrollbar-hidden">
               {(() => {
-                const filteredLogs = logs.filter(l => l.productId === historyProduct.id);
+                const productLogs = logs.filter(l => l.productId === historyProduct.id);
+                const filteredLogs = productLogs.filter(l => {
+                  if (historyFilter === 'all') return true;
+                  if (historyFilter === 'added') return l.type === 'addition';
+                  if (historyFilter === 'used') return l.type === 'reduction';
+                  return false;
+                });
+                
                 if (filteredLogs.length === 0) {
                   return (
                     <div className="text-center py-10 space-y-2">
-                      <History className="h-10 w-10 text-slate-300 mx-auto animate-pulse" />
-                      <p className="text-text-secondary text-xs font-sans italic">
-                        No auditable transfer ledger logs found for this SKU yet.
-                      </p>
+                       <History className="h-10 w-10 text-slate-300 mx-auto animate-pulse" />
+                       <p className="text-text-secondary text-xs font-sans italic">
+                        {historyFilter === 'all' 
+                          ? 'No auditable transfer ledger logs found for this SKU yet.'
+                          : historyFilter === 'added'
+                            ? 'No stock addition logs recorded for this SKU yet.'
+                            : 'No stock usage logs recorded for this SKU yet.'
+                        }
+                       </p>
                     </div>
                   );
                 }
 
                 return (
-                  <div className="space-y-4 relative pl-3.5 border-l border-border-subtle">
+                  <div className="space-y-6 relative pl-5 border-l border-slate-200">
                     {filteredLogs.map((item) => {
                       const isAdd = item.type === 'addition';
                       const isRed = item.type === 'reduction';
                       const isDel = item.type === 'deletion';
 
-                      let badgeBg = 'bg-slate-100 text-slate-700';
-                      let labelText = 'Updated Attributes';
-                      let changeColor = 'text-slate-700';
-                      
+                      let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+                      let labelText = 'Updated SKU';
+                      let dotColor = 'bg-slate-400 ring-slate-100/50';
+                      let badgeChange = '';
+
                       if (isAdd) {
-                        badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-100';
-                        labelText = 'Inbound Replenishment';
-                        changeColor = 'text-emerald-700 font-extrabold';
+                        badgeStyle = 'bg-emerald-50 text-emerald-850 border-emerald-200';
+                        labelText = 'Stock Added';
+                        dotColor = 'bg-emerald-500 ring-emerald-100/70';
+                        badgeChange = `+${item.quantityChange}`;
                       } else if (isRed) {
-                        badgeBg = 'bg-amber-50 text-amber-850 border-amber-100';
-                        labelText = 'Sales Transaction / Outbound';
-                        changeColor = 'text-amber-800 font-extrabold';
+                        badgeStyle = 'bg-amber-50 text-amber-850 border-amber-200';
+                        labelText = 'Stock Used';
+                        dotColor = 'bg-amber-500 ring-amber-100/70';
+                        badgeChange = `${item.quantityChange}`;
                       } else if (isDel) {
-                        badgeBg = 'bg-red-50 text-red-800 border-red-100';
+                        badgeStyle = 'bg-red-50 text-red-800 border-red-200';
                         labelText = 'SKU Removed';
-                        changeColor = 'text-red-700 font-extrabold';
+                        dotColor = 'bg-red-500 ring-red-100/70';
+                        badgeChange = `${item.quantityChange}`;
                       }
 
+                      const hasRealNote = item.notes && 
+                        item.notes !== 'Stock added quick addition' && 
+                        item.notes !== 'Stock used quick reduction';
+
                       return (
-                        <div key={item.id} className="relative space-y-1.5 animate-fade-in text-xs font-sans">
+                        <div key={item.id} className="relative group animate-fade-in text-xs font-sans">
                           {/* Chronological dot indicator */}
-                          <span className={`absolute -left-[19.5px] top-1.5 h-2.5 w-2.5 rounded-full ${
-                            isAdd ? 'bg-emerald-500' : isRed ? 'bg-amber-500' : isDel ? 'bg-red-500' : 'bg-slate-400'
-                          } border-2 border-white shadow-xs`} />
+                          <span className={`absolute -left-[26.5px] top-2 h-3.5 w-3.5 rounded-full border-2 border-white ${dotColor} ring-4 ring-slate-50 shadow-xs transition-all duration-300 group-hover:scale-110`} />
 
-                          {/* Top row */}
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${badgeBg} font-bold`}>
-                              {labelText}
-                            </span>
-                            <span className="text-[10px] text-text-secondary font-mono">
-                              {new Date(item.timestamp).toLocaleString(undefined, {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                              })}
-                            </span>
-                          </div>
+                          <div className="space-y-2.5">
+                            {/* Date-time header - highest priority */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-slate-100 pb-1.5">
+                              <span className="text-slate-900 font-sans font-bold text-xs flex items-center gap-1.5">
+                                <Calendar className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                                {new Date(item.timestamp).toLocaleString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-mono font-semibold flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/40">
+                                <Clock className="h-3 w-3 text-slate-450" />
+                                {new Date(item.timestamp).toLocaleTimeString(undefined, {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                })}
+                              </span>
+                            </div>
 
-                          {/* Notes */}
-                          <p className="text-text-primary text-xs font-semibold leading-relaxed pl-1.5 bg-sidebarbg/35 p-2 rounded-xl border border-border-subtle/50">
-                            {item.notes}
-                          </p>
+                            {/* Action metadata row */}
+                            <div className="flex items-center gap-2 pt-0.5">
+                              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border font-bold ${badgeStyle}`}>
+                                {labelText}
+                              </span>
+                              {badgeChange && (
+                                <span className={`text-[11px] font-mono font-extrabold ${isAdd ? 'text-emerald-700' : 'text-amber-800'}`}>
+                                  {badgeChange} units
+                                </span>
+                              )}
+                            </div>
 
-                          {/* Change amount badge */}
-                          <div className="flex items-center justify-between pl-1.5 pt-0.5 text-[10.5px]">
-                            <span className="text-text-secondary">Quantity movement:</span>
-                            <span className={changeColor}>
-                              {item.quantityChange > 0 ? `+${item.quantityChange}` : item.quantityChange} units
-                            </span>
+                            {/* Beautiful clean background for Note status */}
+                            <div className={`p-3 rounded-xl border transition-all ${
+                              hasRealNote 
+                                ? 'bg-slate-50/90 border-slate-200/60 shadow-xxs' 
+                                : 'bg-transparent border-dashed border-slate-200/50 text-slate-450'
+                            }`}>
+                              {hasRealNote ? (
+                                <p className="text-slate-700 font-medium leading-relaxed font-sans text-xs flex items-start gap-1.5">
+                                  <span>{item.notes}</span>
+                                </p>
+                              ) : (
+                                <p className="font-sans text-[11px] italic text-slate-400">
+                                  No transaction notes recorded.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1047,6 +1186,304 @@ export default function ProductsList({
                 className="px-5 py-2.5 bg-brand text-white rounded-xl font-sans text-xs font-bold hover:brightness-105 shadow-xs transition-colors cursor-pointer"
               >
                 Dismiss History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Target Popup Modal: Record Stock Usage */}
+      {usageProduct && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in animate-duration-150" 
+          onClick={() => setUsageProduct(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-border-subtle flex flex-col" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-border-subtle flex items-start justify-between bg-red-50/50">
+              <div className="space-y-1">
+                <span className="bg-red-100 text-red-800 font-mono text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  {usageProduct.sku}
+                </span>
+                <h3 className="font-sans font-extrabold text-[#9A1C1C] text-base md:text-lg flex items-center gap-2 mt-1">
+                  <MinusSquare className="h-5 w-5 text-red-650" />
+                  <span>Record Stock Usage</span>
+                </h3>
+              </div>
+              <button 
+                id="close-usage-modal"
+                type="button" 
+                onClick={() => setUsageProduct(null)}
+                className="p-1.5 hover:bg-slate-100 text-text-secondary hover:text-text-primary rounded-full transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content & Form */}
+            <div className="p-5 space-y-4">
+              {/* Product brief info */}
+              <div className="p-4 bg-slate-50 border border-border-subtle/70 rounded-2xl space-y-1">
+                <div className="text-[10px] uppercase font-bold text-text-secondary font-mono">PRODUCT NAME</div>
+                <div className="text-sm font-bold text-text-primary leading-snug">{usageProduct.name}</div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/50 text-xs">
+                  <span className="text-text-secondary font-semibold">Available Stock:</span>
+                  <span className="font-mono font-bold text-brand bg-brand/5 px-2 py-0.5 rounded-md">
+                    {usageProduct.quantity} units
+                  </span>
+                </div>
+              </div>
+
+              {/* Usage quantity field */}
+              <div className="space-y-1.5">
+                <label 
+                  htmlFor="usage-qty-input" 
+                  className="text-text-secondary font-bold font-mono uppercase text-[9px]"
+                >
+                  Quantity to Use (Decrease Stock By)
+                </label>
+                <div className="relative">
+                  <input
+                    id="usage-qty-input"
+                    type="number"
+                    min="1"
+                    max={usageProduct.quantity}
+                    value={usageQty}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setUsageQty(val);
+                      setUsageError(null);
+                    }}
+                    className="w-full bg-white border border-border-subtle focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-200 rounded-xl px-3.5 py-2.5 font-mono text-sm text-text-primary font-bold shadow-xxs"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-xs font-semibold">
+                    units
+                  </span>
+                </div>
+
+                {/* Quick select presets */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[1, 2, 5, 10].map(n => (
+                    <button
+                      key={n}
+                      id={`preset-qty-${n}`}
+                      type="button"
+                      disabled={n > usageProduct.quantity}
+                      onClick={() => setUsageQty(n)}
+                      className={`px-3 py-1 text-[10.5px] rounded-lg border font-semibold transition-all cursor-pointer ${
+                        usageQty === n
+                          ? 'bg-red-50 text-red-700 border-red-200 font-bold'
+                          : 'bg-white text-text-secondary border-border-subtle hover:text-text-primary hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none'
+                      }`}
+                    >
+                      -{n} {n === 1 ? 'Unit' : 'Units'}
+                    </button>
+                  ))}
+                  <button
+                    id="preset-qty-all"
+                    type="button"
+                    onClick={() => setUsageQty(usageProduct.quantity)}
+                    className={`px-3 py-1 text-[10.5px] rounded-lg border font-semibold transition-all cursor-pointer ${
+                      usageQty === usageProduct.quantity
+                        ? 'bg-[#9A1C1C] text-white border-[#7F1D1D] font-bold'
+                        : 'bg-white text-[#9A1C1C] border-[#FCA5A5]/40 hover:bg-[#FEF2F2] hover:text-[#7f1d1d]'
+                    }`}
+                  >
+                    Use All ({usageProduct.quantity})
+                  </button>
+                </div>
+              </div>
+
+              {/* Usage reason / log comments */}
+              <div className="space-y-1.5">
+                <label 
+                  htmlFor="usage-notes-input" 
+                  className="text-text-secondary font-bold font-mono uppercase text-[9px]"
+                >
+                  Usage Reason / Project Location
+                </label>
+                <textarea
+                  id="usage-notes-input"
+                  rows={2}
+                  value={usageNotes}
+                  onChange={(e) => setUsageNotes(e.target.value)}
+                  placeholder="e.g., Used for electrical wiring renewal in Sector-C"
+                  className="w-full bg-white border border-border-subtle focus:outline-none focus:border-red-500 rounded-xl px-3.5 py-2 font-sans text-xs text-text-primary shadow-xxs resize-none"
+                />
+              </div>
+
+              {/* Error log alert */}
+              {usageError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2 text-[11px] text-red-800 font-sans animate-fade-in animate-duration-150">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span className="font-semibold leading-relaxed">{usageError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-border-subtle bg-slate-50 flex items-center justify-end gap-2">
+              <button
+                id="cancel-usage-btn"
+                type="button"
+                onClick={() => setUsageProduct(null)}
+                className="px-4 py-2.5 bg-white border border-border-subtle hover:bg-slate-50 text-text-secondary font-sans text-xs font-semibold rounded-xl tracking-tight transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-usage-btn"
+                type="button"
+                onClick={handleExecuteUsage}
+                className="px-5 py-2.5 bg-[#9A1C1C] hover:bg-[#801414] active:bg-[#680F0F] text-white rounded-xl shadow-xs hover:shadow-sm font-sans text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <MinusSquare className="h-4 w-4 stroke-[2.5]" />
+                Confirm Stock Used
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Target Popup Modal: Record Stock Addition */}
+      {additionProduct && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/45 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in animate-duration-150" 
+          onClick={() => setAdditionProduct(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-slide-up border border-border-subtle flex flex-col" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-border-subtle flex items-start justify-between bg-emerald-50/50">
+              <div className="space-y-1">
+                <span className="bg-emerald-100 text-emerald-800 font-mono text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  {additionProduct.sku}
+                </span>
+                <h3 className="font-sans font-extrabold text-[#047857] text-base md:text-lg flex items-center gap-2 mt-1">
+                  <PlusSquare className="h-5 w-5 text-emerald-600" />
+                  <span>Record Stock Addition</span>
+                </h3>
+              </div>
+              <button 
+                id="close-addition-modal"
+                type="button" 
+                onClick={() => setAdditionProduct(null)}
+                className="p-1.5 hover:bg-slate-100 text-text-secondary hover:text-text-primary rounded-full transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content & Form */}
+            <div className="p-5 space-y-4">
+              {/* Product brief info */}
+              <div className="p-4 bg-slate-50 border border-border-subtle/70 rounded-2xl space-y-1">
+                <div className="text-[10px] uppercase font-bold text-text-secondary font-mono">PRODUCT NAME</div>
+                <div className="text-sm font-bold text-text-primary leading-snug">{additionProduct.name}</div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/50 text-xs">
+                  <span className="text-text-secondary font-semibold">Current Stock:</span>
+                  <span className="font-mono font-bold text-brand bg-brand/5 px-2 py-0.5 rounded-md">
+                    {additionProduct.quantity} units
+                  </span>
+                </div>
+              </div>
+
+              {/* Addition quantity field */}
+              <div className="space-y-1.5">
+                <label 
+                  htmlFor="addition-qty-input" 
+                  className="text-text-secondary font-bold font-mono uppercase text-[9px]"
+                >
+                  Quantity to Add (Increase Stock By)
+                </label>
+                <div className="relative">
+                  <input
+                    id="addition-qty-input"
+                    type="number"
+                    min="1"
+                    value={additionQty}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 0;
+                      setAdditionQty(val);
+                      setAdditionError(null);
+                    }}
+                    className="w-full bg-white border border-border-subtle focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 rounded-xl px-3.5 py-2.5 font-mono text-sm text-text-primary font-bold shadow-xxs"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary text-xs font-semibold">
+                    units
+                  </span>
+                </div>
+
+                {/* Quick select presets */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[1, 5, 10, 50, 100].map(n => (
+                    <button
+                      key={n}
+                      id={`preset-add-qty-${n}`}
+                      type="button"
+                      onClick={() => setAdditionQty(n)}
+                      className={`px-3 py-1 text-[10.5px] rounded-lg border font-semibold transition-all cursor-pointer ${
+                        additionQty === n
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold'
+                          : 'bg-white text-text-secondary border-border-subtle hover:text-text-primary hover:bg-slate-50'
+                      }`}
+                    >
+                      +{n} {n === 1 ? 'Unit' : 'Units'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes field */}
+              <div className="space-y-1.5">
+                <label 
+                  htmlFor="addition-notes-input" 
+                  className="text-text-secondary font-bold font-mono uppercase text-[9px]"
+                >
+                  Note (Optional)
+                </label>
+                <textarea
+                  id="addition-notes-input"
+                  rows={2}
+                  value={additionNotes}
+                  onChange={(e) => setAdditionNotes(e.target.value)}
+                  placeholder="e.g., Supplier shipment received"
+                  className="w-full bg-white border border-border-subtle focus:outline-none focus:border-emerald-500 rounded-xl px-3.5 py-2 font-sans text-xs text-text-primary shadow-xxs resize-none"
+                />
+              </div>
+
+              {/* Error log alert */}
+              {additionError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-2 text-[11px] text-red-800 font-sans animate-fade-in animate-duration-150">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                  <span className="font-semibold leading-relaxed">{additionError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-border-subtle bg-slate-50 flex items-center justify-end gap-2">
+              <button
+                id="cancel-addition-btn"
+                type="button"
+                onClick={() => setAdditionProduct(null)}
+                className="px-4 py-2.5 bg-white border border-border-subtle hover:bg-slate-50 text-text-secondary font-sans text-xs font-semibold rounded-xl tracking-tight transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-addition-btn"
+                type="button"
+                onClick={handleExecuteAddition}
+                className="px-5 py-2.5 bg-[#047857] hover:bg-[#065F46] active:bg-[#064E3B] text-white rounded-xl shadow-xs hover:shadow-sm font-sans text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <PlusSquare className="h-4 w-4 stroke-[2.5]" />
+                Confirm Stock Addition
               </button>
             </div>
           </div>

@@ -4,7 +4,7 @@ import {
   ArrowLeft, 
   Upload, 
   Sparkles, 
-  DollarSign, 
+  Calendar, 
   Layers, 
   AlertTriangle,
   Info,
@@ -45,7 +45,9 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [category, setCategory] = useState<Category>('Cables & Wiring');
-  const [price, setPrice] = useState(0);
+  const [isUsed, setIsUsed] = useState<boolean>(false);
+  const [addedAt, setAddedAt] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [usedAt, setUsedAt] = useState<string>('');
   const [quantity, setQuantity] = useState(0);
   const [minThreshold, setMinThreshold] = useState(10);
   const [brand, setBrand] = useState('');
@@ -62,12 +64,22 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
       setName(productToEdit.name);
       setSku(productToEdit.sku);
       setCategory(productToEdit.category as Category);
-      setPrice(productToEdit.price);
       setQuantity(productToEdit.quantity);
       setMinThreshold(productToEdit.minThreshold);
       setBrand(productToEdit.brand);
       setDescription(productToEdit.description);
       setImageUrl(productToEdit.image_url);
+      setIsUsed(productToEdit.isUsed ?? false);
+      if (productToEdit.addedAt) {
+        setAddedAt(productToEdit.addedAt.split('T')[0]);
+      } else {
+        setAddedAt(new Date().toISOString().split('T')[0]);
+      }
+      if (productToEdit.usedAt) {
+        setUsedAt(productToEdit.usedAt.split('T')[0]);
+      } else {
+        setUsedAt('');
+      }
     } else {
       // Auto-generate starting SKU
       generateSmartSku();
@@ -178,7 +190,9 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
       name: name.trim(),
       sku: sku.trim().toUpperCase(),
       category,
-      price: Math.max(0, Number(price)),
+      isUsed,
+      addedAt: addedAt ? new Date(addedAt).toISOString() : new Date().toISOString(),
+      usedAt: isUsed && usedAt ? new Date(usedAt).toISOString() : undefined,
       quantity: Math.max(0, Math.floor(Number(quantity))),
       minThreshold: Math.max(0, Math.floor(Number(minThreshold))),
       brand: brand.trim() || "Generic",
@@ -292,8 +306,8 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
           </div>
         </div>
 
-        {/* Row 2: SKU and Pricing */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Row 2: SKU and Pricing / Condition */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="space-y-1.5">
             <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold flex justify-between items-center">
               <span>SKU CODE</span>
@@ -318,23 +332,54 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
-              PRICE FOR SINGLE UNIT ($)
+            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
+              ITEM CONDITION
             </label>
-            <div className="relative">
-              <span className="absolute left-3.5 top-[11px] text-text-secondary font-mono text-xs leading-tight font-bold">$</span>
-              <input 
-                id="field-price"
-                type="number" 
-                min="0"
-                step="0.01"
-                required
-                value={price === 0 ? "" : price}
-                onChange={(e) => setPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-                placeholder="49.99"
-                className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl pl-8 pr-4 py-2.5 font-mono text-sm text-text-primary"
-              />
+            <div className="grid grid-cols-2 gap-1 bg-sidebarbg p-1 border border-border-subtle rounded-xl text-xs h-[42px] items-center">
+              <button
+                type="button"
+                onClick={() => setIsUsed(false)}
+                className={`py-1.5 px-1.5 rounded-lg text-center font-sans font-bold transition-all cursor-pointer text-[10.5px] ${
+                  !isUsed 
+                    ? 'bg-brand text-white shadow-xxs' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/40'
+                }`}
+              >
+                New Item
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsUsed(true)}
+                className={`py-1.5 px-1.5 rounded-lg text-center font-sans font-bold transition-all cursor-pointer text-[10.5px] ${
+                  isUsed 
+                    ? 'bg-warning-primary text-white shadow-xxs' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/40'
+                }`}
+              >
+                Used Item
+              </button>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-brand" />
+              <span>{isUsed ? "USED / ACQU. DATE" : "ADDED DATE"}</span>
+            </label>
+            <input 
+              id="field-date"
+              type="date"
+              required
+              value={isUsed ? (usedAt || addedAt) : addedAt}
+              onChange={(e) => {
+                if (isUsed) {
+                  setUsedAt(e.target.value);
+                } else {
+                  setAddedAt(e.target.value);
+                }
+              }}
+              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-xs text-text-primary h-[42px]"
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -349,7 +394,7 @@ export default function AddProductForm({ productToEdit, onSave, onCancel }: AddP
               value={quantity}
               onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
               placeholder="100"
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-sm text-text-primary"
+              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-sm text-text-primary h-[42px]"
             />
           </div>
         </div>

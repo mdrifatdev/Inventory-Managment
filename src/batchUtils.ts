@@ -11,27 +11,34 @@ export function getProductBatches(product: Product): ProductBatch[] {
   return [
     {
       id: `batch-${product.id}-init`,
-      price: product.price,
+      isUsed: product.isUsed ?? false,
       quantity: product.quantity,
       originalQuantity: product.quantity,
-      addedAt: product.updated_at || new Date().toISOString()
+      addedAt: product.addedAt || product.updated_at || new Date().toISOString(),
+      usedAt: product.usedAt
     }
   ];
 }
 
 /**
- * Adds a new stock replenishment batch with its own custom price.
+ * Adds a new stock replenishment batch with its own condition (New or Used).
  */
-export function addProductToBatches(product: Product, quantityToAdd: number, price: number): Product {
+export function addProductToBatches(
+  product: Product, 
+  quantityToAdd: number, 
+  isUsed: boolean, 
+  usedAt?: string
+): Product {
   const currentBatches = getProductBatches(product);
   const updatedBatches = currentBatches.map(b => ({ ...b }));
 
   updatedBatches.push({
     id: `batch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-    price: price,
+    isUsed: isUsed,
     quantity: quantityToAdd,
     originalQuantity: quantityToAdd,
-    addedAt: new Date().toISOString()
+    addedAt: new Date().toISOString(),
+    usedAt: isUsed ? (usedAt || new Date().toISOString()) : undefined
   });
 
   const totalQty = updatedBatches.reduce((sum, b) => sum + b.quantity, 0);
@@ -39,8 +46,7 @@ export function addProductToBatches(product: Product, quantityToAdd: number, pri
   return {
     ...product,
     quantity: totalQty,
-    // Set active price to the latest batch price
-    price: price,
+    isUsed: isUsed,
     batches: updatedBatches,
     updated_at: new Date().toISOString()
   };
@@ -55,12 +61,12 @@ export function sellProductFromBatches(
   customNotes?: string
 ): {
   updatedProduct: Product;
-  priceDetails: { quantity: number; price: number }[];
+  usageDetails: { quantity: number; isUsed: boolean; date: string }[];
   notes: string;
 } {
   const currentBatches = getProductBatches(product);
   let remainingToSell = quantityToSell;
-  const soldFrom: { quantity: number; price: number }[] = [];
+  const usedFrom: { quantity: number; isUsed: boolean; date: string }[] = [];
   const updatedBatches = currentBatches.map(b => ({ ...b }));
 
   // FIFO sell-down
@@ -71,45 +77,44 @@ export function sellProductFromBatches(
     const sellCount = Math.min(batch.quantity, remainingToSell);
     batch.quantity -= sellCount;
     remainingToSell -= sellCount;
-    soldFrom.push({ quantity: sellCount, price: batch.price });
+    usedFrom.push({ quantity: sellCount, isUsed: batch.isUsed, date: batch.addedAt });
   }
 
   // If we sell beyond total in-stock (oversell/audit adjustment)
   if (remainingToSell > 0) {
-    const defaultPrice = product.price;
+    const defaultIsUsed = product.isUsed;
     if (updatedBatches.length > 0) {
       // Deplete from newest/last batch or init batch
       const lastBatch = updatedBatches[updatedBatches.length - 1];
       lastBatch.quantity -= remainingToSell;
     }
-    soldFrom.push({ quantity: remainingToSell, price: defaultPrice });
+    usedFrom.push({ quantity: remainingToSell, isUsed: defaultIsUsed, date: new Date().toISOString() });
     remainingToSell = 0;
   }
 
   const totalQty = updatedBatches.reduce((sum, b) => sum + Math.max(0, b.quantity), 0);
 
   // Formatting transition details
-  const noteDetails = soldFrom
-    .map(s => `${s.quantity} units sold at $${s.price.toFixed(2)} each`)
+  const noteDetails = usedFrom
+    .map(s => `${s.quantity} units (${s.isUsed ? 'Used' : 'New'}, added ${new Date(s.date).toLocaleDateString()}) dispatched`)
     .join(", ");
   
   const autoNotes = `Stock depleted FIFO: ${noteDetails}.`;
   const finalNotes = customNotes ? `${customNotes.trim()} [FIFO: ${noteDetails}]` : autoNotes;
 
-  // Set the current listed price to the oldest active batch that still has stock,
-  // or default to the last added batch if all are empty
+  // Set the current listed status to the oldest active batch that still has stock
   const activeBatch = updatedBatches.find(b => b.quantity > 0) || updatedBatches[updatedBatches.length - 1];
-  const activePrice = activeBatch ? activeBatch.price : product.price;
+  const activeIsUsed = activeBatch ? activeBatch.isUsed : product.isUsed;
 
   return {
     updatedProduct: {
       ...product,
       quantity: totalQty,
-      price: activePrice,
+      isUsed: activeIsUsed,
       batches: updatedBatches,
       updated_at: new Date().toISOString()
     },
-    priceDetails: soldFrom,
+    usageDetails: usedFrom,
     notes: finalNotes
   };
 }

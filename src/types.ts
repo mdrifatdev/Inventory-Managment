@@ -1,9 +1,10 @@
 export interface ProductBatch {
   id: string;
-  price: number;
+  isUsed: boolean;
   quantity: number;
   originalQuantity: number;
   addedAt: string;
+  usedAt?: string;
 }
 
 export interface Product {
@@ -11,13 +12,15 @@ export interface Product {
   name: string;
   sku: string;
   category: string;
-  price: number;
   quantity: number;
   minThreshold: number; // Low stock warning limit
   image_url: string;
   brand: string;
   description: string;
   updated_at: string;
+  isUsed: boolean;
+  addedAt: string;
+  usedAt?: string;
   batches?: ProductBatch[];
 }
 
