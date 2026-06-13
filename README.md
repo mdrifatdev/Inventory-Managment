@@ -73,12 +73,15 @@ create table products (
   name text not null,
   sku text not null,
   category text not null,
-  price numeric not null,
   quantity integer not null,
   minThreshold integer not null,
   image_url text,
   brand text,
   description text,
+  isUsed boolean not null default false,
+  addedAt text not null,
+  usedAt text,
+  batches jsonb,
   updated_at text not null
 );
 
@@ -87,7 +90,7 @@ create table inventory_logs (
   id text primary key,
   productId text not null,
   productName text not null,
-  type text not null, -- 'addition' or 'reduction'
+  type text not null, -- 'addition', 'reduction', 'update', or 'deletion'
   quantityChange integer not null,
   timestamp text not null,
   notes text
