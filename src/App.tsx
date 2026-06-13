@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import AuthPanel from './components/AuthPanel';
@@ -8,13 +9,15 @@ import Products from './pages/Products';
 import AddProduct from './pages/AddProduct';
 import EditProduct from './pages/EditProduct';
 import SettingsPanel from './components/SettingsPanel';
+import ProtectedRoute from './components/ProtectedRoute';
 import { Product } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus } from 'lucide-react';
 import { useProducts } from './hooks/useProducts';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<string>('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productsListFilter, setProductsListFilter] = useState<'all' | 'low-stock' | 'out-of-stock'>('all');
 
@@ -54,16 +57,16 @@ export default function App() {
     } else {
       setSessionUser(null);
     }
-  }, [currentView]);
+  }, []);
 
   const handleLowStockFilterClick = () => {
     setProductsListFilter('low-stock');
-    setCurrentView('products');
+    navigate('/products');
   };
 
   const handleOutOfStockFilterClick = () => {
     setProductsListFilter('out-of-stock');
-    setCurrentView('products');
+    navigate('/products');
   };
 
   const handleCreateOrUpdateProduct = async (payload: Omit<Product, 'id' | 'updated_at'> & { id?: string }) => {
@@ -83,7 +86,7 @@ export default function App() {
     }
     setEditingProduct(null);
     setProductsListFilter('all');
-    setCurrentView('products');
+    navigate('/products');
   };
 
   const handleDeleteProduct = async (id: string) => {
@@ -122,12 +125,12 @@ export default function App() {
 
   const handleEditClick = (prod: Product) => {
     setEditingProduct(prod);
-    setCurrentView('edit-product');
+    navigate(`/edit/${prod.id}`);
   };
 
   const handleCancelForm = () => {
     setEditingProduct(null);
-    setCurrentView('products');
+    navigate('/products');
   };
 
   const lowStockCount = products.filter(p => p.quantity <= p.minThreshold && p.quantity > 0).length;
@@ -135,14 +138,6 @@ export default function App() {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-pagebg text-text-primary font-sans">
       <Navbar 
-        currentView={currentView} 
-        onViewChange={(view) => {
-          setEditingProduct(null);
-          if (view === 'products') {
-            setProductsListFilter('all');
-          }
-          setCurrentView(view);
-        }} 
         lowStockCount={lowStockCount}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
@@ -156,21 +151,18 @@ export default function App() {
             <p className="text-xs text-text-secondary font-semibold tracking-wide">Loading inventory...</p>
           </div>
         ) : (
-          <>
-            {currentView === 'dashboard' && (
+          <Routes>
+            <Route path="/" element={
               <Dashboard 
                 products={products}
                 logs={logs}
-                onViewChange={(view) => {
-                  setEditingProduct(null);
-                  setCurrentView(view);
-                }}
+                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
                 onFilterLowStock={handleLowStockFilterClick}
                 onFilterOutOfStock={handleOutOfStockFilterClick}
               />
-            )}
+            } />
 
-            {currentView === 'products' && (
+            <Route path="/products" element={
               <Products 
                 products={products}
                 logs={logs}
@@ -178,26 +170,34 @@ export default function App() {
                 onEdit={handleEditClick}
                 onDelete={handleDeleteProduct}
                 onUpdateQuantity={handleUpdateProductQuantityOnly}
-                onViewChange={setCurrentView}
+                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
               />
-            )}
+            } />
 
-            {currentView === 'add-product' && (
-              <AddProduct 
-                onSave={handleCreateOrUpdateProduct}
-                onCancel={handleCancelForm}
-              />
-            )}
+            <Route path="/add" element={
+              <ProtectedRoute>
+                <AddProduct 
+                  onSave={handleCreateOrUpdateProduct}
+                  onCancel={handleCancelForm}
+                />
+              </ProtectedRoute>
+            } />
 
-            {currentView === 'edit-product' && editingProduct && (
-              <EditProduct 
-                product={editingProduct}
-                onSave={handleCreateOrUpdateProduct}
-                onCancel={handleCancelForm}
-              />
-            )}
+            <Route path="/edit/:id" element={
+              <ProtectedRoute>
+                {editingProduct ? (
+                  <EditProduct 
+                    product={editingProduct}
+                    onSave={handleCreateOrUpdateProduct}
+                    onCancel={handleCancelForm}
+                  />
+                ) : (
+                  <div className="text-center py-20 text-text-secondary">Product not found in memory. Please go to Product List and select Edit again.</div>
+                )}
+              </ProtectedRoute>
+            } />
 
-            {currentView === 'settings' && (
+            <Route path="/settings" element={
               <SettingsPanel 
                 isDarkMode={isDarkMode}
                 onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
@@ -207,21 +207,36 @@ export default function App() {
                   refresh();
                 }} 
               />
-            )}
+            } />
 
-            {currentView === 'auth' && (
+            <Route path="/auth" element={
               <AuthPanel 
                 sessionUser={sessionUser}
                 isOfflineModeEnabled={false}
-                onViewChange={setCurrentView}
+                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
               />
-            )}
-          </>
+            } />
+            
+            {/* Fallback route */}
+            <Route path="/logs" element={
+              <div className="text-center py-20 text-text-secondary">
+                <h2 className="text-xl font-bold mb-2">History Logs</h2>
+                <p>Please refer to the bottom of the Dashboard or inspect a product directly to see logs.</p>
+              </div>
+            } />
+            
+            <Route path="*" element={
+              <div className="text-center py-20 text-text-secondary">
+                <h2 className="text-xl font-bold mb-2">Page Not Found</h2>
+                <button onClick={() => navigate('/')} className="text-brand hover:underline">Return to Dashboard</button>
+              </div>
+            } />
+          </Routes>
         )}
       </main>
 
       <AnimatePresence>
-        {currentView !== 'add-product' && currentView !== 'edit-product' && (
+        {!location.pathname.includes('/add') && !location.pathname.includes('/edit') && (
           <motion.button
             initial={{ scale: 0, opacity: 0, y: 50 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -230,7 +245,7 @@ export default function App() {
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               setEditingProduct(null);
-              setCurrentView('add-product');
+              navigate('/add');
             }}
             className="fixed bottom-6 right-6 z-40 bg-brand hover:brightness-110 text-white rounded-full w-14 h-14 md:w-auto md:h-auto md:pl-4 md:pr-5 md:py-3.5 shadow-lg hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 group border border-brand/20 active:scale-95"
             title="Add Product"

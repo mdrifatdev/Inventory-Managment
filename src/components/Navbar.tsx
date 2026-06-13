@@ -1,5 +1,6 @@
 import React from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Package, 
@@ -16,8 +17,6 @@ import {
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
   lowStockCount: number;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
@@ -25,26 +24,25 @@ interface NavbarProps {
 }
 
 export default function Navbar({ 
-  currentView, 
-  onViewChange, 
   lowStockCount,
   isDarkMode,
   onToggleDarkMode,
   sessionUser
 }: NavbarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   const navigationItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', name: 'Product List', icon: Package },
-    { id: 'add-product', name: 'Add Product', icon: PlusCircle },
-    { id: 'logs', name: 'History Logs', icon: History },
-    { id: 'settings', name: 'Settings', icon: SettingsIcon },
-    { id: 'auth', name: sessionUser ? 'Account Profile' : 'Sign In', icon: UserIcon },
+    { path: '/', name: 'Dashboard', icon: LayoutDashboard },
+    { path: '/products', name: 'Product List', icon: Package },
+    { path: '/add', name: 'Add Product', icon: PlusCircle },
+    { path: '/logs', name: 'History Logs', icon: History },
+    { path: '/settings', name: 'Settings', icon: SettingsIcon },
+    { path: '/auth', name: sessionUser ? 'Account Profile' : 'Sign In', icon: UserIcon },
   ];
 
-  const handleNavClick = (id: string) => {
-    onViewChange(id);
+  const handleNavClick = () => {
     setIsOpen(false);
   };
 
@@ -62,18 +60,17 @@ export default function Navbar({
         </div>
         <div className="flex items-center gap-2">
           {lowStockCount > 0 && (
-            <button 
-              id="low-stock-mobile-btn"
-              onClick={() => handleNavClick('products')}
+            <Link 
+              to="/products"
+              onClick={handleNavClick}
               className="flex items-center gap-1 bg-warning-light text-warning-primary px-2.5 py-1 rounded-full text-xs font-semibold border border-warning-light/30"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>{lowStockCount} Low</span>
-            </button>
+            </Link>
           )}
 
           <button
-            id="mobile-menu-toggle"
             onClick={() => setIsOpen(!isOpen)}
             className="p-2 text-text-secondary hover:bg-border-subtle rounded-full"
             aria-label="Toggle Menu"
@@ -102,12 +99,12 @@ export default function Navbar({
             <nav className="flex flex-col gap-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentView === item.id;
+                const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path));
                 return (
-                  <button
-                    id={`nav-mob-${item.id}`}
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={handleNavClick}
                     className={`flex items-center gap-3 px-4 py-3 rounded-full text-left font-sans text-sm font-medium transition-all ${
                       isActive 
                         ? 'bg-brand-light text-brand-dark font-medium' 
@@ -116,12 +113,12 @@ export default function Navbar({
                   >
                     <Icon className={`h-5 w-5 ${isActive ? 'text-brand' : 'text-text-secondary'}`} />
                     <span>{item.name}</span>
-                    {item.id === 'products' && lowStockCount > 0 && (
+                    {item.path === '/products' && lowStockCount > 0 && (
                       <span className="ml-auto bg-warning-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-extrabold shrink-0">
                         {lowStockCount}
                       </span>
                     )}
-                  </button>
+                  </Link>
                 );
               })}
             </nav>
@@ -129,7 +126,6 @@ export default function Navbar({
             {/* Mobile Drawer Theme Preference & Status Footer */}
             <div className="mt-auto pt-2 border-t border-border-subtle flex flex-col gap-2">
               <button
-                id="mob-theme-toggle-btn"
                 type="button"
                 onClick={onToggleDarkMode}
                 className="flex items-center justify-between w-full px-4 py-2 rounded-full text-left font-sans text-xs font-bold text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-all cursor-pointer"
@@ -180,12 +176,11 @@ export default function Navbar({
         <nav className="flex flex-col gap-1.5">
           {navigationItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive = currentPath === item.path || (item.path !== '/' && currentPath.startsWith(item.path));
             return (
-              <button
-                id={`nav-dt-${item.id}`}
-                key={item.id}
-                onClick={() => onViewChange(item.id)}
+              <Link
+                key={item.path}
+                to={item.path}
                 className={`relative flex items-center gap-4 px-4 py-3 rounded-full text-left font-sans text-[14px] font-medium tracking-wide transition-all group ${
                   isActive 
                     ? 'text-brand-dark font-semibold bg-brand-light' 
@@ -195,12 +190,12 @@ export default function Navbar({
                 <Icon className={`h-5 w-5 transition-transform ${isActive ? 'text-brand scale-105' : 'text-text-secondary group-hover:scale-105'}`} />
                 <span>{item.name}</span>
                 
-                {item.id === 'products' && lowStockCount > 0 && (
+                {item.path === '/products' && lowStockCount > 0 && (
                   <span className="ml-auto bg-warning-light text-warning-primary border border-warning-light/50 rounded-full text-[10px] font-bold px-2 py-0.5 animate-pulse">
                     {lowStockCount} Critical
                   </span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>
@@ -216,20 +211,18 @@ export default function Navbar({
                 </p>
               </div>
             </div>
-            <button
-              id="sidebar-warning-btn"
-              onClick={() => onViewChange('products')}
-              className="mt-1 text-center bg-brand hover:brightness-110 text-white rounded-full py-1.5 px-3 text-[11px] font-medium tracking-wide transition-all cursor-pointer"
+            <Link
+              to="/products"
+              className="mt-1 text-center bg-brand hover:brightness-110 text-white rounded-full py-1.5 px-3 text-[11px] font-medium tracking-wide transition-all cursor-pointer block"
             >
               Inspect Shortages
-            </button>
+            </Link>
           </div>
         )}
 
         {/* Desktop Sidebar Preference Toggle */}
         <div className="mt-auto mb-3">
           <button
-            id="dt-theme-toggle-btn"
             type="button"
             onClick={onToggleDarkMode}
             className="flex items-center justify-between w-full px-4 py-2.5 rounded-full text-left font-sans text-xs font-bold text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-all cursor-pointer"
@@ -248,15 +241,16 @@ export default function Navbar({
           </button>
         </div>
 
-        <div className="px-4 py-3 bg-border-subtle/55 rounded-2xl border border-border-subtle flex flex-col gap-1">
-          <p className="text-[10px] font-mono text-text-secondary font-bold uppercase tracking-wide">ENGINE STATE</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <div className="h-2 w-2 rounded-full bg-emerald-600 shadow-sm" />
-            <span className="text-[11px] font-sans font-semibold text-text-secondary">Offline-First Cache DB</span>
+        {/* Desktop Mini-footer info */}
+        <div className="px-4 py-2.5 bg-white border border-border-subtle rounded-2xl flex flex-col gap-1.5 text-[10.5px] font-mono text-text-secondary">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Local Sync Active</span>
           </div>
           {sessionUser && (
-            <div className="mt-1 text-[11px] font-sans font-bold text-emerald-600 dark:text-emerald-400 truncate" title={sessionUser.email}>
-              👤 Active: {sessionUser.email}
+            <div className="flex items-center gap-2 text-text-primary font-sans font-bold">
+              <UserIcon className="h-3 w-3 text-brand" />
+              <span className="truncate w-40">{sessionUser.email}</span>
             </div>
           )}
         </div>
