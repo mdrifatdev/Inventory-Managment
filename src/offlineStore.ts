@@ -42,14 +42,16 @@ export async function initializeOfflineDatabase() {
 
   if (productsCount === 0) {
     let initialProductsList: Product[] = [];
+    let fetchedFromCloud = false;
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .order('name', { ascending: true });
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           initialProductsList = data as Product[];
+          fetchedFromCloud = true;
         }
       } catch (e) {
         console.warn('Could not contact Supabase for seeding, using static backup.', e);
@@ -61,20 +63,22 @@ export async function initializeOfflineDatabase() {
     }
 
     await db.products.bulkPut(
-      initialProductsList.map((p) => ({ ...p, synced: !!supabase }))
+      initialProductsList.map((p) => ({ ...p, synced: fetchedFromCloud }))
     );
   }
 
   if (logsCount === 0) {
     let initialLogsList: InventoryLog[] = [];
+    let fetchedFromCloud = false;
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('inventory_logs')
           .select('*')
           .order('timestamp', { ascending: false });
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
           initialLogsList = data as InventoryLog[];
+          fetchedFromCloud = true;
         }
       } catch (e) {
         console.warn('Could not contact Supabase logs for seeding, using static backup.', e);
@@ -86,8 +90,52 @@ export async function initializeOfflineDatabase() {
     }
 
     await db.inventoryLogs.bulkPut(
-      initialLogsList.map((l) => ({ ...l, synced: !!supabase }))
+      initialLogsList.map((l) => ({ ...l, synced: fetchedFromCloud }))
     );
+  }
+}
+
+/**
+ * Scans local Dexie database for any products or logs marked synced=false that are NOT already in the pendingSyncs queue,
+ * and adds them to pendingSyncs so they get synchronized to the cloud.
+ */
+export async function queueUnsyncedLocalData() {
+  try {
+    const unsyncedProducts = await db.products.filter(p => !p.synced).toArray();
+    for (const product of unsyncedProducts) {
+      const existing = await db.pendingSyncs
+        .where('targetId')
+        .equals(product.id)
+        .first();
+      if (!existing) {
+        await db.pendingSyncs.add({
+          table: 'products',
+          action: 'insert',
+          targetId: product.id,
+          payload: product,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    const unsyncedLogs = await db.inventoryLogs.filter(l => !l.synced).toArray();
+    for (const log of unsyncedLogs) {
+      const existing = await db.pendingSyncs
+        .where('targetId')
+        .equals(log.id)
+        .first();
+      if (!existing) {
+        await db.pendingSyncs.add({
+          table: 'inventory_logs',
+          action: 'insert',
+          targetId: log.id,
+          payload: log,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Failed to queue unsynced local data", e);
   }
 }
 
@@ -107,8 +155,33 @@ export async function syncOfflineData(setProgressCallback?: (current: number, to
 
   isSyncingActive = true;
   let syncedCount = 0;
+  let lastErrorMsg: string | undefined = undefined;
 
   try {
+    // One-time migration: If we are connecting to a new database that is empty,
+    // and we have local products that are marked synced: true but aren't in Supabase,
+    // let's mark them as synced: false so they get queued and uploaded!
+    if (localStorage.getItem('initial_seed_pushed') !== 'true') {
+      try {
+        const { data, error } = await supabase.from('products').select('id').limit(1);
+        if (!error && (!data || data.length === 0)) {
+          // Remote DB is empty! Let's force all local products and logs to synced: false
+          // so they get picked up and synced.
+          await db.products.toCollection().modify({ synced: false });
+          await db.inventoryLogs.toCollection().modify({ synced: false });
+          localStorage.setItem('initial_seed_pushed', 'true');
+        } else if (!error) {
+          // Remote DB is not empty, so it's already set up or has data. Just mark as pushed.
+          localStorage.setItem('initial_seed_pushed', 'true');
+        }
+      } catch (migrationErr) {
+        console.warn("One-time database migration check failed", migrationErr);
+      }
+    }
+
+    // Queue any local unsynced data first
+    await queueUnsyncedLocalData();
+
     const pendingItems = await db.pendingSyncs.orderBy('id').toArray();
     const total = pendingItems.length;
 
@@ -124,34 +197,39 @@ export async function syncOfflineData(setProgressCallback?: (current: number, to
 
       const item = pendingItems[i];
       let networkSuccess = false;
+      lastErrorMsg = undefined;
 
       try {
+        const { synced, ...cleanPayload } = item.payload || {};
+
         if (item.table === 'products') {
           if (item.action === 'insert') {
             const { error } = await supabase
               .from('products')
-              .insert([item.payload]);
+              .insert([cleanPayload]);
             if (!error) {
               await db.products.update(item.targetId, { synced: true });
               networkSuccess = true;
             } else {
               console.error('Insert sync failed for product', item.targetId, error);
+              lastErrorMsg = `${error.message} (${error.code})`;
               // If product already exists in DB, treat as success or ignore
               if (error.code === '23505') {
                 await db.products.update(item.targetId, { synced: true });
                 networkSuccess = true;
+                lastErrorMsg = undefined;
               }
             }
           } else if (item.action === 'update') {
             const { error } = await supabase
               .from('products')
-              .update(item.payload)
-              .eq('id', item.targetId);
+              .upsert([cleanPayload]);
             if (!error) {
               await db.products.update(item.targetId, { synced: true });
               networkSuccess = true;
             } else {
               console.error('Update sync failed for product', item.targetId, error);
+              lastErrorMsg = `${error.message} (${error.code})`;
             }
           } else if (item.action === 'delete') {
             const { error } = await supabase
@@ -162,21 +240,24 @@ export async function syncOfflineData(setProgressCallback?: (current: number, to
               networkSuccess = true;
             } else {
               console.error('Delete sync failed for product', item.targetId, error);
+              lastErrorMsg = `${error.message} (${error.code})`;
             }
           }
         } else if (item.table === 'inventory_logs') {
           if (item.action === 'insert') {
             const { error } = await supabase
               .from('inventory_logs')
-              .insert([item.payload]);
+              .insert([cleanPayload]);
             if (!error) {
               await db.inventoryLogs.update(item.targetId, { synced: true });
               networkSuccess = true;
             } else {
               console.error('Insert sync failed for log', item.targetId, error);
+              lastErrorMsg = `${error.message} (${error.code})`;
               if (error.code === '23505') {
                 await db.inventoryLogs.update(item.targetId, { synced: true });
                 networkSuccess = true;
+                lastErrorMsg = undefined;
               }
             }
           }
@@ -189,8 +270,9 @@ export async function syncOfflineData(setProgressCallback?: (current: number, to
           // Pause execution on first real network or DB error to preserve retry order
           break;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Exception during syncing sync-item', item, err);
+        lastErrorMsg = err?.message || 'Unexpected sync connection exception';
         break; // Stop syncing loop to avoid flood of exceptions
       }
     }
@@ -200,6 +282,13 @@ export async function syncOfflineData(setProgressCallback?: (current: number, to
     }
 
     isSyncingActive = false;
+    if (syncedCount < total) {
+      return { 
+        success: false, 
+        syncedCount, 
+        errorMsg: lastErrorMsg || 'Sync paused due to database or network error' 
+      };
+    }
     return { success: true, syncedCount };
   } catch (globalErr: any) {
     isSyncingActive = false;
@@ -288,12 +377,14 @@ export async function deleteOfflineProductFromDB(id: string): Promise<boolean> {
 
   // Check if there is an unsynced insert pending sync for this product first
   const existingInsertSync = await db.pendingSyncs
-    .where({ table: 'products', action: 'insert', targetId: id })
+    .where('targetId')
+    .equals(id)
+    .filter(item => item.table === 'products' && item.action === 'insert')
     .first();
 
   if (existingInsertSync) {
     // Local-only product was deleted before syncing! Clean syncs entirely
-    await db.pendingSyncs.where({ targetId: id }).delete();
+    await db.pendingSyncs.where('targetId').equals(id).delete();
   } else {
     // Log the deletion to sync
     await db.pendingSyncs.add({

@@ -210,6 +210,14 @@ export default function App() {
             const { updatedProduct } = sellProductFromBatches(existing!, Math.abs(qtyDiff));
             updatedPayload = updatedProduct;
           }
+          // Copy over any edited textual/spec details from payload
+          updatedPayload.name = payload.name;
+          updatedPayload.sku = payload.sku.toUpperCase();
+          updatedPayload.brand = payload.brand;
+          updatedPayload.description = payload.description;
+          updatedPayload.image_url = payload.image_url;
+          updatedPayload.category = payload.category;
+          updatedPayload.minThreshold = payload.minThreshold;
         } else {
           // No quantity change: conserve existing batches
           updatedPayload.batches = existing?.batches || getProductBatches(existing!);

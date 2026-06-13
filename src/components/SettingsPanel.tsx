@@ -9,7 +9,7 @@ import {
   Zap,
   RefreshCw
 } from 'lucide-react';
-import { loadSettings, saveSettings, fetchProducts } from '../supabaseClient';
+import { loadSettings, saveSettings, fetchProducts, getSupabaseClient } from '../supabaseClient';
 import { Settings } from '../types';
 
 interface SettingsPanelProps {
@@ -56,7 +56,11 @@ export default function SettingsPanel({
       if (updated.supabaseUrl && updated.supabaseAnonKey) {
         setMsg({ type: 'success', text: 'Validating Supabase connection...' });
         try {
-          await fetchProducts();
+          const supabase = getSupabaseClient();
+          if (!supabase) throw new Error("Supabase client failed to initialize.");
+          const { error } = await supabase.from('products').select('id').limit(1);
+          if (error) throw error;
+          
           setMsg({ type: 'success', text: 'Backend Sync Active! Successfully connected to your Supabase tables.' });
         } catch (dbErr) {
           console.error("Database connection check failed", dbErr);
