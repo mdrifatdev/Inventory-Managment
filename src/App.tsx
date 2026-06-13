@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { loadSettings } from './supabaseClient';
+import { loadSettings, getSupabaseClient } from './supabaseClient';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import AuthPanel from './components/AuthPanel';
 import { 
   getLocalProducts, 
   getLocalLogs, 
@@ -88,6 +90,27 @@ export default function App() {
     }
     localStorage.setItem('theme_preference', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+  const [sessionUser, setSessionUser] = useState<SupabaseUser | null>(null);
+
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSessionUser(session?.user ?? null);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSessionUser(session?.user ?? null);
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } else {
+      setSessionUser(null);
+    }
+  }, [isOfflineModeEnabled, currentView]);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -359,6 +382,7 @@ export default function App() {
         lowStockCount={lowStockCount}
         isDarkMode={isDarkMode}
         onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
+        sessionUser={sessionUser}
       />
 
       {/* Main Content Area */}
@@ -585,6 +609,14 @@ export default function App() {
                 onSettingsSaved={async () => {
                   await loadAllData();
                 }} 
+              />
+            )}
+
+            {currentView === 'auth' && (
+              <AuthPanel 
+                sessionUser={sessionUser}
+                isOfflineModeEnabled={isOfflineModeEnabled}
+                onViewChange={setCurrentView}
               />
             )}
           </>

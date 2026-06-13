@@ -1,4 +1,5 @@
 import React from 'react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { 
   LayoutDashboard, 
   Package, 
@@ -10,7 +11,8 @@ import {
   X,
   Sun,
   Moon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  User as UserIcon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,6 +21,7 @@ interface SidebarProps {
   lowStockCount: number;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
+  sessionUser: SupabaseUser | null;
 }
 
 export default function Sidebar({ 
@@ -26,7 +29,8 @@ export default function Sidebar({
   onViewChange, 
   lowStockCount,
   isDarkMode,
-  onToggleDarkMode
+  onToggleDarkMode,
+  sessionUser
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -36,6 +40,7 @@ export default function Sidebar({
     { id: 'add-product', name: 'Add Product', icon: PlusCircle },
     { id: 'logs', name: 'History Logs', icon: History },
     { id: 'settings', name: 'Settings', icon: SettingsIcon },
+    { id: 'auth', name: sessionUser ? 'Account Profile' : 'Sign In', icon: UserIcon },
   ];
 
   const handleNavClick = (id: string) => {
@@ -141,8 +146,13 @@ export default function Sidebar({
                   />
                 </div>
               </button>
-              <div className="px-4 py-1.5 text-text-secondary text-[10px] font-mono">
-                ⚡ Status: Local DB Live
+              <div className="px-4 py-1.5 text-text-secondary text-[10px] font-mono flex flex-col gap-0.5">
+                <div>⚡ Status: Local DB Live</div>
+                {sessionUser && (
+                  <div className="text-emerald-600 dark:text-emerald-400 font-sans font-bold truncate">
+                    👤 Active: {sessionUser.email}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -244,6 +254,11 @@ export default function Sidebar({
             <div className="h-2 w-2 rounded-full bg-emerald-600 shadow-sm" />
             <span className="text-[11px] font-sans font-semibold text-text-secondary">Offline-First Cache DB</span>
           </div>
+          {sessionUser && (
+            <div className="mt-1 text-[11px] font-sans font-bold text-emerald-600 dark:text-emerald-400 truncate" title={sessionUser.email}>
+              👤 Active: {sessionUser.email}
+            </div>
+          )}
         </div>
       </aside>
     </>

@@ -125,20 +125,32 @@ export function saveSettings(settings: Settings): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-// Check if credentials are valid
+let cachedClient: SupabaseClient | null = null;
+let lastUrl = '';
+let lastAnonKey = '';
+
+// Check if credentials are valid and cache client to support Supabase Auth sessions properly
 export function getSupabaseClient(): SupabaseClient | null {
   if (localStorage.getItem('force_offline') === 'true') {
+    cachedClient = null;
     return null;
   }
   const { supabaseUrl, supabaseAnonKey } = loadSettings();
   if (supabaseUrl && supabaseAnonKey && supabaseUrl.trim() !== "" && supabaseAnonKey.trim() !== "") {
+    if (cachedClient && lastUrl === supabaseUrl && lastAnonKey === supabaseAnonKey) {
+      return cachedClient;
+    }
     try {
-      return createClient(supabaseUrl, supabaseAnonKey);
+      cachedClient = createClient(supabaseUrl, supabaseAnonKey);
+      lastUrl = supabaseUrl;
+      lastAnonKey = supabaseAnonKey;
+      return cachedClient;
     } catch (e) {
       console.error("Error creating Supabase client", e);
       return null;
     }
   }
+  cachedClient = null;
   return null;
 }
 
