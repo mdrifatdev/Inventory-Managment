@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './offlineStore';
 
-export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+export function useNetworkStatus(forceOffline: boolean = false) {
+  const [isOnline, setIsOnline] = useState<boolean>(!forceOffline && navigator.onLine);
   const [isChecking, setIsChecking] = useState<boolean>(false);
 
   // Read quantity of pending sync items from indexDB in a reactive way using dexie-react-hooks
@@ -21,6 +21,10 @@ export function useNetworkStatus() {
 
   // Function to actively check ping
   const checkConnectivity = async () => {
+    if (forceOffline) {
+      setIsOnline(false);
+      return false;
+    }
     if (!navigator.onLine) {
       setIsOnline(false);
       return false;
@@ -46,6 +50,11 @@ export function useNetworkStatus() {
   };
 
   useEffect(() => {
+    if (forceOffline) {
+      setIsOnline(false);
+      return;
+    }
+
     const handleOnline = () => {
       checkConnectivity();
     };
@@ -68,7 +77,7 @@ export function useNetworkStatus() {
       window.removeEventListener('offline', handleOffline);
       clearInterval(interval);
     };
-  }, []);
+  }, [forceOffline]);
 
   return {
     isOnline,

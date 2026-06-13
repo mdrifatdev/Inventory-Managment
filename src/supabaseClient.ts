@@ -127,6 +127,9 @@ export function saveSettings(settings: Settings): void {
 
 // Check if credentials are valid
 export function getSupabaseClient(): SupabaseClient | null {
+  if (localStorage.getItem('force_offline') === 'true') {
+    return null;
+  }
   const { supabaseUrl, supabaseAnonKey } = loadSettings();
   if (supabaseUrl && supabaseAnonKey && supabaseUrl.trim() !== "" && supabaseAnonKey.trim() !== "") {
     try {

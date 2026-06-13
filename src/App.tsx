@@ -54,8 +54,20 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [productsListFilter, setProductsListFilter] = useState<'all' | 'low-stock' | 'out-of-stock'>('all');
 
+  const [isOfflineModeEnabled, setIsOfflineModeEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('force_offline') === 'true';
+  });
+
   // Network offline-first sync states and triggers
-  const { isOnline, pendingCount, isChecking } = useNetworkStatus();
+  const { isOnline, pendingCount, isChecking } = useNetworkStatus(isOfflineModeEnabled);
+
+  const handleToggleOfflineMode = () => {
+    setIsOfflineModeEnabled(prev => {
+      const nextVal = !prev;
+      localStorage.setItem('force_offline', nextVal ? 'true' : 'false');
+      return nextVal;
+    });
+  };
   const [syncingProgress, setSyncingProgress] = useState<{ current: number; total: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -361,28 +373,40 @@ export default function App() {
             {/* Offline Sync & Connectivity Dashboard Banner */}
             <div className="mb-6 bg-white dark:bg-slate-900 border border-border-subtle dark:border-slate-800 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xxs font-sans animate-fade-in">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className={`p-2.5 rounded-2xl flex items-center justify-center ${
-                  isOnline 
-                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                    : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
-                }`}>
+                <button
+                  id="network-indicator-btn"
+                  onClick={handleToggleOfflineMode}
+                  title={isOfflineModeEnabled ? "Offline Mode (Click to toggle Online)" : "Online Mode (Click to toggle Offline)"}
+                  className={`p-2.5 rounded-2xl flex items-center justify-center transition-all cursor-pointer hover:scale-[1.04] active:scale-[0.96] border border-transparent ${
+                    isOnline 
+                      ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-110 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-900/30' 
+                      : 'bg-amber-50 text-amber-600 hover:bg-amber-110 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-900/30'
+                  }`}
+                >
                   {isOnline ? (
                     <Wifi className="h-5 w-5 animate-pulse" />
                   ) : (
                     <WifiOff className="h-5 w-5" />
                   )}
-                </div>
+                </button>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-sans font-bold text-xs text-text-primary dark:text-slate-100 uppercase tracking-wide">
-                      {isOnline ? 'Online (Real-Time Cloud Sync)' : 'Offline Mode (Local-First Storage Active)'}
+                      {isOfflineModeEnabled 
+                        ? 'Forced Offline Preference' 
+                        : isOnline 
+                          ? 'Online (Real-Time Cloud Sync)' 
+                          : 'Offline Mode (Local-First Storage Active)'
+                      }
                     </h3>
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" style={{ display: isOnline ? 'inline-block' : 'none' }} />
                   </div>
                   <p className="text-[11px] text-text-secondary dark:text-slate-400 leading-tight">
-                    {isOnline 
-                      ? 'Local database (Dexie.js) is in live synchronization with Supabase Cloud.' 
-                      : 'All creations, quantity adjustments, and logs are saved instantly to IndexedDB locally.'
+                    {isOfflineModeEnabled
+                      ? 'Supabase connection is intentionally disabled. Click the status button or adjust settings to reconnect.'
+                      : isOnline 
+                        ? 'Local database (Dexie.js) is in live synchronization with Supabase Cloud.' 
+                        : 'All creations, quantity adjustments, and logs are saved instantly to IndexedDB locally.'
                     }
                   </p>
                 </div>
@@ -556,6 +580,8 @@ export default function App() {
               <SettingsPanel 
                 isDarkMode={isDarkMode}
                 onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
+                isOfflineModeEnabled={isOfflineModeEnabled}
+                onToggleOfflineMode={handleToggleOfflineMode}
                 onSettingsSaved={async () => {
                   await loadAllData();
                 }} 

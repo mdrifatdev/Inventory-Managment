@@ -16,12 +16,16 @@ interface SettingsPanelProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
   onSettingsSaved: () => void;
+  isOfflineModeEnabled: boolean;
+  onToggleOfflineMode: () => void;
 }
 
 export default function SettingsPanel({ 
   isDarkMode, 
   onToggleDarkMode, 
-  onSettingsSaved 
+  onSettingsSaved,
+  isOfflineModeEnabled,
+  onToggleOfflineMode
 }: SettingsPanelProps) {
   const [supabaseUrl, setSupabaseUrl] = useState('');
   const [supabaseAnonKey, setSupabaseAnonKey] = useState('');
@@ -150,6 +154,30 @@ export default function SettingsPanel({
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-xs text-text-primary"
             />
+          </div>
+
+          {/* Sync Mode Toggle Option */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-sidebarbg/40 border border-border-subtle rounded-2xl gap-3">
+            <div>
+              <h4 className="font-sans font-bold text-xs text-text-primary">Cloud Connection Preference</h4>
+              <p className="text-[10.5px] text-text-secondary mt-0.5 max-w-md leading-relaxed font-sans">
+                Set cache sync preference. Toggle to <strong className="text-amber-600 dark:text-amber-500 font-bold">Offline Only</strong> to operate strictly locally, or <strong className="text-emerald-600 dark:text-emerald-500 font-bold">Online Connection</strong> to stream records with Supabase.
+              </p>
+            </div>
+            <button
+              id="settings-offline-toggle"
+              type="button"
+              onClick={onToggleOfflineMode}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isOfflineModeEnabled ? 'bg-amber-500/80' : 'bg-emerald-500/80'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+                  isOfflineModeEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
         </div>
 
