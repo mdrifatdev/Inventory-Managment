@@ -3,21 +3,31 @@ import {
   LayoutDashboard, 
   Package, 
   PlusCircle, 
-  Settings as SettingsIcon, 
   History, 
   Zap,
   AlertTriangle,
   Menu,
-  X
+  X,
+  Sun,
+  Moon,
+  Settings as SettingsIcon
 } from 'lucide-react';
 
 interface SidebarProps {
   currentView: string;
   onViewChange: (view: string) => void;
   lowStockCount: number;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
-export default function Sidebar({ currentView, onViewChange, lowStockCount }: SidebarProps) {
+export default function Sidebar({ 
+  currentView, 
+  onViewChange, 
+  lowStockCount,
+  isDarkMode,
+  onToggleDarkMode
+}: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const navigationItems = [
@@ -25,7 +35,7 @@ export default function Sidebar({ currentView, onViewChange, lowStockCount }: Si
     { id: 'products', name: 'Product List', icon: Package },
     { id: 'add-product', name: 'Add Product', icon: PlusCircle },
     { id: 'logs', name: 'History Logs', icon: History },
-    { id: 'settings', name: 'Cloud Settings', icon: SettingsIcon },
+    { id: 'settings', name: 'Settings', icon: SettingsIcon },
   ];
 
   const handleNavClick = (id: string) => {
@@ -56,6 +66,7 @@ export default function Sidebar({ currentView, onViewChange, lowStockCount }: Si
               <span>{lowStockCount} Low</span>
             </button>
           )}
+
           <button
             id="mobile-menu-toggle"
             onClick={() => setIsOpen(!isOpen)}
@@ -110,8 +121,29 @@ export default function Sidebar({ currentView, onViewChange, lowStockCount }: Si
               })}
             </nav>
             
-            <div className="mt-auto px-4 py-3 text-text-secondary text-xs font-mono border-t border-border-subtle">
-              ⚡ Status: Local DB Live
+            {/* Mobile Drawer Theme Preference & Status Footer */}
+            <div className="mt-auto pt-2 border-t border-border-subtle flex flex-col gap-2">
+              <button
+                id="mob-theme-toggle-btn"
+                type="button"
+                onClick={onToggleDarkMode}
+                className="flex items-center justify-between w-full px-4 py-2 rounded-full text-left font-sans text-xs font-bold text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  {isDarkMode ? <Moon className="h-4 w-4 text-brand" /> : <Sun className="h-4 w-4 text-amber-500" />}
+                  <span>{isDarkMode ? 'Dark Theme' : 'Light Theme'}</span>
+                </div>
+                <div className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-brand-light dark:bg-brand/35">
+                  <span
+                    className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                      isDarkMode ? 'translate-x-4 bg-brand' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
+              <div className="px-4 py-1.5 text-text-secondary text-[10px] font-mono">
+                ⚡ Status: Local DB Live
+              </div>
             </div>
           </div>
         </div>
@@ -184,7 +216,29 @@ export default function Sidebar({ currentView, onViewChange, lowStockCount }: Si
           </div>
         )}
 
-        <div className="mt-auto px-4 py-3 bg-border-subtle/55 rounded-2xl border border-border-subtle flex flex-col gap-1">
+        {/* Desktop Sidebar Preference Toggle */}
+        <div className="mt-auto mb-3">
+          <button
+            id="dt-theme-toggle-btn"
+            type="button"
+            onClick={onToggleDarkMode}
+            className="flex items-center justify-between w-full px-4 py-2.5 rounded-full text-left font-sans text-xs font-bold text-text-secondary hover:bg-border-subtle hover:text-text-primary transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              {isDarkMode ? <Moon className="h-4.5 w-4.5 text-brand" /> : <Sun className="h-4.5 w-4.5 text-amber-500" />}
+              <span>{isDarkMode ? 'Dark Theme' : 'Light Theme'}</span>
+            </div>
+            <div className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-brand-light dark:bg-brand/35">
+              <span
+                className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                  isDarkMode ? 'translate-x-4 bg-brand' : 'translate-x-0'
+                }`}
+              />
+            </div>
+          </button>
+        </div>
+
+        <div className="px-4 py-3 bg-border-subtle/55 rounded-2xl border border-border-subtle flex flex-col gap-1">
           <p className="text-[10px] font-mono text-text-secondary font-bold uppercase tracking-wide">ENGINE STATE</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className="h-2 w-2 rounded-full bg-emerald-600 shadow-sm" />

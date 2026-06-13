@@ -345,6 +345,8 @@ export default function App() {
           setCurrentView(view);
         }} 
         lowStockCount={lowStockCount}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
       />
 
       {/* Main Content Area */}
