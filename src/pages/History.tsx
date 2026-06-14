@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, History as HistoryIcon, Filter } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, History as HistoryIcon, Filter, X, Calendar } from 'lucide-react';
 import { InventoryLog } from '../types';
 import { formatDateTime, groupByDate } from '../lib/dateUtils';
 
@@ -11,10 +11,21 @@ type FilterType = 'all' | 'in' | 'out';
 
 export default function HistoryPage({ logs }: HistoryProps) {
   const [filter, setFilter] = useState<FilterType>('all');
+  const [searchDate, setSearchDate] = useState<string>('');
 
   const filteredLogs = logs.filter((log) => {
-    if (filter === 'in') return log.type === 'addition';
-    if (filter === 'out') return log.type === 'reduction';
+    if (filter === 'in' && log.type !== 'addition') return false;
+    if (filter === 'out' && log.type !== 'reduction') return false;
+    
+    if (searchDate) {
+      const logDate = new Date(log.timestamp);
+      const searchDateObj = new Date(searchDate);
+      const isSameDate = logDate.getDate() === searchDateObj.getDate() &&
+                         logDate.getMonth() === searchDateObj.getMonth() &&
+                         logDate.getFullYear() === searchDateObj.getFullYear();
+      if (!isSameDate) return false;
+    }
+    
     return true;
   });
 
@@ -56,6 +67,25 @@ export default function HistoryPage({ logs }: HistoryProps) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Date Search */}
+      <div className="relative">
+        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
+        <input
+          type="date"
+          value={searchDate}
+          onChange={(e) => setSearchDate(e.target.value)}
+          className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-card border border-border-subtle text-sm text-text-primary focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all cursor-pointer font-sans"
+        />
+        {searchDate && (
+          <button
+            onClick={() => setSearchDate('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary cursor-pointer p-1"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* Log list grouped by date */}
