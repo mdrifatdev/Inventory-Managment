@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { Plus } from 'lucide-react';
 import AuthPanel from './components/AuthPanel';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -15,6 +16,7 @@ import { useProducts } from './hooks/useProducts';
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productsListFilter, setProductsListFilter] = useState<'all' | 'low-stock' | 'out-of-stock'>('all');
 
@@ -226,6 +228,16 @@ export default function App() {
           </Routes>
         )}
       </main>
+
+      {['/', '/products'].includes(location.pathname) && (
+        <button
+          onClick={() => navigate('/add')}
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-brand text-white flex items-center justify-center shadow-lg hover:bg-brand/90 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+          title="Add New Product"
+        >
+          <Plus className="h-6 w-6 transition-transform group-hover:rotate-90 duration-300" />
+        </button>
+      )}
     </div>
   );
 }
