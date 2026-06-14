@@ -85,29 +85,29 @@ export default function Dashboard({
         {/* Stock In Today */}
         <div 
           onClick={() => setActiveTodayDrawerType('addition')}
-          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-emerald-300/80 transition-all cursor-pointer"
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-success/50 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Stock In Today</span>
-            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <div className="h-8 w-8 rounded-lg bg-success-light flex items-center justify-center text-success">
               <ArrowUpRight className="h-4 w-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-emerald-600 tracking-tight">+{stockInToday}</p>
+          <p className="text-2xl font-bold text-success tracking-tight">+{stockInToday}</p>
         </div>
 
         {/* Stock Used Today */}
         <div 
           onClick={() => setActiveTodayDrawerType('reduction')}
-          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-red-300/80 transition-all cursor-pointer"
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-warning-primary/50 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Stock Used Today</span>
-            <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+            <div className="h-8 w-8 rounded-lg bg-warning-light flex items-center justify-center text-warning-primary">
               <ArrowDownRight className="h-4 w-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-red-500 tracking-tight">-{stockUsedToday}</p>
+          <p className="text-2xl font-bold text-warning-primary tracking-tight">-{stockUsedToday}</p>
         </div>
 
       </div>
@@ -161,14 +161,14 @@ export default function Dashboard({
               return (
                 <div key={log.id} className="flex items-center gap-3 px-5 py-3 hover:bg-pagebg/50 transition-colors">
                   <div className={`shrink-0 h-7 w-7 rounded-md flex items-center justify-center ${
-                    isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+                    isIn ? 'bg-success-light text-success' : 'bg-warning-light text-warning-primary'
                   }`}>
                     {isIn ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-text-primary truncate">{log.productName}</p>
                   </div>
-                  <span className={`shrink-0 text-[11px] font-bold font-mono ${isIn ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <span className={`shrink-0 text-[11px] font-bold font-mono ${isIn ? 'text-success' : 'text-warning-primary'}`}>
                     {isIn ? '+' : ''}{log.quantityChange}
                   </span>
                   <span className="shrink-0 text-[10px] text-text-muted hidden sm:block">{dateStr} {timeStr}</span>

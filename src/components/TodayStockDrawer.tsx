@@ -67,7 +67,7 @@ export default function TodayStockDrawer({ isOpen, onClose, logs, type }: TodayS
                   return (
                     <div key={log.id} className="p-3 flex items-start gap-3 hover:bg-pagebg/50 transition-colors">
                       <div className={`mt-0.5 shrink-0 h-6 w-6 rounded-md flex items-center justify-center ${
-                        isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+                        isIn ? 'bg-success-light text-success' : 'bg-warning-light text-warning-primary'
                       }`}>
                         {isIn ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                       </div>
@@ -82,7 +82,7 @@ export default function TodayStockDrawer({ isOpen, onClose, logs, type }: TodayS
                       </div>
                       
                       <div className="shrink-0 text-right">
-                        <span className={`block font-mono font-bold text-sm ${isIn ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <span className={`block font-mono font-bold text-sm ${isIn ? 'text-success' : 'text-warning-primary'}`}>
                           {isIn ? '+' : ''}{log.quantityChange}
                         </span>
                         <span className="text-[10px] text-text-muted font-medium">{timeStr}</span>

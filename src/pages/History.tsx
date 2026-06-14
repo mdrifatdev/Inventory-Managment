@@ -86,8 +86,8 @@ export default function HistoryPage({ logs }: HistoryProps) {
                           {/* Direction icon */}
                           <div className={`shrink-0 h-9 w-9 rounded-lg flex items-center justify-center ${
                             isIn
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-red-50 text-red-500'
+                              ? 'bg-success-light text-success'
+                              : 'bg-warning-light text-warning-primary'
                           }`}>
                             {isIn
                               ? <ArrowUpRight className="h-5 w-5" />
@@ -107,8 +107,8 @@ export default function HistoryPage({ logs }: HistoryProps) {
                           <div className="flex items-center gap-4">
                             <span className={`shrink-0 text-sm font-bold font-mono px-2.5 py-1 rounded-md ${
                               isIn
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-red-50 text-red-600'
+                                ? 'bg-success-light text-success'
+                                : 'bg-warning-light text-warning-primary'
                             }`}>
                               {isIn ? '+' : ''}{log.quantityChange}
                             </span>

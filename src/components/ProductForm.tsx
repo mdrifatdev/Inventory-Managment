@@ -28,13 +28,7 @@ const CATEGORIES: Category[] = [
   "Other Accessories"
 ];
 
-const PRESET_IMAGES = [
-  { name: 'Copper Reel', url: 'https://images.unsplash.com/photo-1558449028-b53a39d100fc?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Smart Dimmer', url: 'https://images.unsplash.com/photo-1595183864453-e5d7df9d9df3?w=600&auto=format&fit=crop&q=80' },
-  { name: 'LED Pack', url: 'https://images.unsplash.com/photo-1550985616-10810253b84d?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Breaker Panel', url: 'https://images.unsplash.com/photo-1621259182978-f09e5e2ab09a?w=600&auto=format&fit=crop&q=80' },
-  { name: 'Ventilation Fan', url: 'https://images.unsplash.com/photo-1618944847828-82e943c3dba7?w=600&auto=format&fit=crop&q=80' },
-];
+
 
 export default function ProductForm({ productToEdit, onSave, onCancel }: ProductFormProps) {
   const [name, setName] = useState('');
@@ -383,7 +377,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
               </label>
             </div>
 
-            <div className="space-y-2 flex flex-col">
+            <div className="flex flex-col justify-center">
               <div className="bg-pagebg p-3 border border-border-subtle rounded-lg space-y-1.5">
                 <label className="text-[10px] font-bold text-text-secondary tracking-wide uppercase">Or paste image URL</label>
                 <div className="flex gap-1.5 mt-1">
@@ -404,18 +398,6 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                     </button>
                   )}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-auto">
-                {PRESET_IMAGES.map((preset) => (
-                  <button
-                    type="button"
-                    key={preset.url}
-                    onClick={() => setImageUrl(preset.url)}
-                    className="text-[10px] font-medium px-2 py-1 rounded-full border border-border-subtle bg-card hover:bg-pagebg text-text-secondary transition-colors cursor-pointer"
-                  >
-                    {preset.name}
-                  </button>
-                ))}
               </div>
             </div>
           </div>
