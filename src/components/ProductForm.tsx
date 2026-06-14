@@ -107,13 +107,24 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', settings.cloudinaryUploadPreset);
+        
+        // Ensure image optimization (quality auto, format auto, max width 1200)
+        // Usually done in upload_preset, but we can try forcing folder/transformations if needed.
+        // Easiest is to append upload transformations if the API supports it, or rely on fetch URL later.
+        // Actually Cloudinary handles transformations via URL like f_auto,q_auto,c_limit,w_1200
+        // We'll upload normally but store the optimized URL.
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/${settings.cloudinaryCloudName}/image/upload`,
           { method: 'POST', body: formData }
         );
         if (response.ok) {
           const data = await response.json();
-          setImageUrl(data.secure_url || data.url);
+          // Transform the URL to serve an optimized image
+          let finalUrl = data.secure_url || data.url;
+          if (finalUrl.includes('/upload/')) {
+            finalUrl = finalUrl.replace('/upload/', '/upload/f_auto,q_auto,c_limit,w_1200/');
+          }
+          setImageUrl(finalUrl);
           setFeedback({ type: 'success', text: 'Image uploaded successfully!' });
         } else {
           throw new Error("Upload failed");
@@ -362,7 +373,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                   : 'border-border-subtle bg-pagebg hover:bg-brand-light/10'
               }`}
             >
-              <input id="file-image-picker" type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
+              <input id="file-image-picker" type="file" accept="image/*" capture="environment" onChange={handleFileInput} className="hidden" />
               <label htmlFor="file-image-picker" className="cursor-pointer flex flex-col items-center space-y-1.5">
                 <Upload className="h-5 w-5 text-brand" />
                 <p className="text-xs font-medium text-text-primary">

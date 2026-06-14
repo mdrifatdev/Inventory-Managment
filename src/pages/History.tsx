@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, ArrowDownRight, History as HistoryIcon, Filter } from 'lucide-react';
 import { InventoryLog } from '../types';
+import { formatDateTime, groupByDate } from '../lib/dateUtils';
 
 interface HistoryProps {
   logs: InventoryLog[];
@@ -17,6 +18,12 @@ export default function HistoryPage({ logs }: HistoryProps) {
     return true;
   });
 
+  // Sort global history descending
+  const sortedLogs = [...filteredLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  
+  // Group by date
+  const groupedLogs = groupByDate(sortedLogs);
+
   const filterButtons: { key: FilterType; label: string }[] = [
     { key: 'all', label: 'All' },
     { key: 'in', label: 'Stock In' },
@@ -24,7 +31,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
   ];
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -33,7 +40,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
         </div>
 
         {/* Filter pills */}
-        <div className="flex items-center gap-1 bg-pagebg border border-border-subtle p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-card border border-border-subtle p-1 rounded-lg shadow-sm">
           {filterButtons.map((btn) => (
             <button
               key={btn.key}
@@ -42,7 +49,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 filter === btn.key
                   ? 'bg-brand text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-border-subtle'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-pagebg'
               }`}
             >
               {btn.label}
@@ -51,60 +58,71 @@ export default function HistoryPage({ logs }: HistoryProps) {
         </div>
       </div>
 
-      {/* Log list */}
-      <div className="rounded-xl border border-border-subtle bg-card overflow-hidden">
-        {filteredLogs.length === 0 ? (
-          <div className="py-16 text-center">
+      {/* Log list grouped by date */}
+      <div>
+        {sortedLogs.length === 0 ? (
+          <div className="py-16 text-center bg-card rounded-xl border border-border-subtle">
             <HistoryIcon className="h-8 w-8 text-text-muted mx-auto mb-2" />
             <p className="text-sm text-text-secondary">No history entries found.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border-subtle">
-            {filteredLogs.map((log) => {
-              const isIn = log.type === 'addition';
-              const date = new Date(log.timestamp);
-              const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-              const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          <div className="space-y-6">
+            {Object.entries(groupedLogs).map(([dateLabel, dayLogs]) => (
+              <div key={dateLabel}>
+                <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3 ml-1 flex items-center gap-2">
+                  <span className="h-px bg-border-subtle flex-1"></span>
+                  {dateLabel}
+                  <span className="h-px bg-border-subtle flex-1"></span>
+                </h3>
+                
+                <div className="rounded-xl border border-border-subtle bg-card overflow-hidden shadow-sm">
+                  <div className="divide-y divide-border-subtle">
+                    {dayLogs.map((log) => {
+                      const isIn = log.type === 'addition';
+                      const { timeStr } = formatDateTime(log.timestamp);
 
-              return (
-                <div key={log.id} className="flex items-center gap-3 px-4 py-3 hover:bg-pagebg/50 transition-colors">
-                  {/* Direction icon */}
-                  <div className={`shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${
-                    isIn
-                      ? 'bg-emerald-50 text-emerald-600'
-                      : 'bg-red-50 text-red-500'
-                  }`}>
-                    {isIn
-                      ? <ArrowUpRight className="h-4 w-4" />
-                      : <ArrowDownRight className="h-4 w-4" />
-                    }
-                  </div>
+                      return (
+                        <div key={log.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-pagebg/50 transition-colors">
+                          {/* Direction icon */}
+                          <div className={`shrink-0 h-9 w-9 rounded-lg flex items-center justify-center ${
+                            isIn
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-red-50 text-red-500'
+                          }`}>
+                            {isIn
+                              ? <ArrowUpRight className="h-5 w-5" />
+                              : <ArrowDownRight className="h-5 w-5" />
+                            }
+                          </div>
 
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-text-primary truncate">{log.productName}</p>
-                    {log.notes && (
-                      <p className="text-[11px] text-text-muted truncate mt-0.5">{log.notes}</p>
-                    )}
-                  </div>
+                          {/* Details */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-text-primary truncate">{log.productName}</p>
+                            {log.notes && (
+                              <p className="text-[11px] text-text-muted truncate mt-0.5">{log.notes}</p>
+                            )}
+                          </div>
 
-                  {/* Quantity badge */}
-                  <span className={`shrink-0 text-xs font-bold font-mono px-2 py-0.5 rounded-md ${
-                    isIn
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-red-50 text-red-600'
-                  }`}>
-                    {isIn ? '+' : ''}{log.quantityChange}
-                  </span>
-
-                  {/* Date */}
-                  <div className="shrink-0 text-right hidden sm:block">
-                    <p className="text-[11px] font-medium text-text-secondary">{dateStr}</p>
-                    <p className="text-[10px] text-text-muted">{timeStr}</p>
+                          {/* Quantity & Time */}
+                          <div className="flex items-center gap-4">
+                            <span className={`shrink-0 text-sm font-bold font-mono px-2.5 py-1 rounded-md ${
+                              isIn
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-red-50 text-red-600'
+                            }`}>
+                              {isIn ? '+' : ''}{log.quantityChange}
+                            </span>
+                            <div className="shrink-0 text-right w-16 hidden sm:block">
+                              <p className="text-xs font-medium text-text-secondary">{timeStr}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>
