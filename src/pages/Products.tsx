@@ -9,7 +9,8 @@ import {
   Package,
   X,
   History as HistoryIcon,
-  Maximize2
+  Maximize2,
+  Download
 } from 'lucide-react';
 import { Product, Category, InventoryLog } from '../types';
 import StockModal from '../components/StockModal';
@@ -65,6 +66,39 @@ export default function ProductsList({
   }, [initialFilter]);
   
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  const exportToCSV = () => {
+    // CSV Header row
+    const headers = ['Product Name', 'SKU', 'Category', 'Condition', 'Quantity', 'Min Threshold', 'Brand', 'Added Date', 'Description'];
+    
+    // Map products to CSV rows
+    const rows = products.map((p) => {
+      const addedDate = p.addedAt ? new Date(p.addedAt).toLocaleDateString('en-GB') : 'N/A';
+      return [
+        `"${p.name.replace(/"/g, '""')}"`,
+        `"${p.sku}"`,
+        `"${p.category}"`,
+        p.isUsed ? 'Used' : 'New',
+        p.quantity,
+        p.minThreshold,
+        `"${(p.brand || 'Generic').replace(/"/g, '""')}"`,
+        `"${addedDate}"`,
+        `"${(p.description || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    
+    // Create Blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `electric_inventory_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   
   // Modals state
   const [stockModalConfig, setStockModalConfig] = useState<{ product: Product | null, mode: 'in' | 'out' }>({ product: null, mode: 'in' });
@@ -167,6 +201,15 @@ export default function ProductsList({
           <h2 className="font-bold text-lg text-text-primary tracking-tight">Products</h2>
           <p className="text-xs text-text-secondary mt-0.5">{products.length} items in inventory</p>
         </div>
+        {products.length > 0 && (
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-1.5 px-3 py-2 bg-brand text-white text-xs font-bold rounded-lg hover:brightness-115 transition-all cursor-pointer shadow-sm"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Export CSV</span>
+          </button>
+        )}
       </div>
 
       {/* Search + Sort */}
