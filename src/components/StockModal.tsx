@@ -7,16 +7,18 @@ interface StockModalProps {
   mode: 'in' | 'out';
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (quantity: number) => void;
+  onConfirm: (quantity: number, notes?: string) => void;
 }
 
 export default function StockModal({ product, mode, isOpen, onClose, onConfirm }: StockModalProps) {
   const [quantity, setQuantity] = useState<number | ''>('');
+  const [notes, setNotes] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setQuantity('');
+      setNotes('');
       setError(null);
     }
   }, [isOpen]);
@@ -43,7 +45,7 @@ export default function StockModal({ product, mode, isOpen, onClose, onConfirm }
       return;
     }
 
-    onConfirm(qty);
+    onConfirm(qty, notes.trim());
     onClose();
   };
 
@@ -52,9 +54,9 @@ export default function StockModal({ product, mode, isOpen, onClose, onConfirm }
       <div className="bg-card rounded-2xl border border-border-subtle shadow-lg max-w-sm w-full overflow-hidden animate-fade-in">
         
         {/* Header */}
-        <div className={`px-5 py-4 border-b border-border-subtle flex items-center justify-between ${mode === 'in' ? 'bg-emerald-50/50' : 'bg-red-50/50'}`}>
+        <div className={`px-5 py-4 border-b border-border-subtle flex items-center justify-between ${mode === 'in' ? 'bg-success-light/30' : 'bg-warning-light/30'}`}>
           <div className="flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${mode === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-500'}`}>
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${mode === 'in' ? 'bg-success-light text-success' : 'bg-warning-light text-warning-primary'}`}>
               {mode === 'in' ? <Plus className="h-5 w-5" /> : <Minus className="h-5 w-5" />}
             </div>
             <div>
@@ -98,6 +100,18 @@ export default function StockModal({ product, mode, isOpen, onClose, onConfirm }
             )}
           </div>
 
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide block">Notes / Reason (Optional)</label>
+            <textarea
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={mode === 'in' ? 'e.g. Restocked from supplier' : 'e.g. Broken or sold'}
+              className="w-full bg-pagebg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:outline-none transition-all rounded-lg px-3 py-2 text-xs text-text-primary resize-none"
+            />
+          </div>
+
           {/* Quick Amounts */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">Quick Add</label>
@@ -109,8 +123,8 @@ export default function StockModal({ product, mode, isOpen, onClose, onConfirm }
                   onClick={() => handleQuickAdd(amount)}
                   className={`flex-1 py-2 rounded-lg font-mono text-sm font-bold transition-all cursor-pointer border ${
                     mode === 'in' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300' 
-                      : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300'
+                      ? 'bg-success-light text-success border-success/20 hover:brightness-95' 
+                      : 'bg-warning-light text-warning-primary border-warning-primary/20 hover:brightness-95'
                   }`}
                 >
                   +{amount}
@@ -131,7 +145,7 @@ export default function StockModal({ product, mode, isOpen, onClose, onConfirm }
           <button
             onClick={handleConfirm}
             className={`flex-1 py-2.5 rounded-lg text-white text-sm font-bold transition-all shadow-sm cursor-pointer ${
-              mode === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-500 hover:bg-red-600'
+              mode === 'in' ? 'bg-success hover:brightness-110' : 'bg-warning-primary hover:brightness-110'
             }`}
           >
             Confirm

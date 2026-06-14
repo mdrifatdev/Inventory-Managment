@@ -135,18 +135,26 @@ export default function ProductsList({
     }
   };
 
-  const handleStockConfirm = (amount: number) => {
+  const handleStockConfirm = (amount: number, customNotes?: string) => {
     if (!stockModalConfig.product) return;
     const p = stockModalConfig.product;
     const isAdding = stockModalConfig.mode === 'in';
     const newQty = isAdding ? p.quantity + amount : p.quantity - amount;
     
+    let logNotes = '';
+    const prefix = `Stock ${isAdding ? 'in' : 'used'}: ${isAdding ? '+' : '-'}${amount} units.`;
+    if (customNotes && customNotes.trim() !== '') {
+      logNotes = `${prefix} ${customNotes.trim()}`;
+    } else {
+      logNotes = prefix;
+    }
+
     onUpdateQuantity(
       p.id, 
       newQty, 
       isAdding ? 'addition' : 'reduction', 
       p.isUsed, 
-      `Stock ${isAdding ? 'in' : 'used'}: ${isAdding ? '+' : '-'}${amount} units.`
+      logNotes
     );
   };
 
@@ -193,13 +201,13 @@ export default function ProductsList({
       </div>
 
       {/* Category pills */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex overflow-x-auto gap-1.5 scrollbar-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
         {ALL_CATEGORIES.map((cat) => (
           <button
             key={cat}
             type="button"
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border cursor-pointer ${
+            className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border cursor-pointer ${
               selectedCategory === cat
                 ? 'bg-brand text-white border-brand'
                 : 'bg-card border-border-subtle text-text-secondary hover:bg-brand-light hover:text-brand'
@@ -211,7 +219,7 @@ export default function ProductsList({
       </div>
 
       {/* Stock status filters */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 w-full">
         {[
           { key: 'all' as const, label: 'All' },
           { key: 'low-stock' as const, label: 'Low Stock' },
@@ -221,7 +229,7 @@ export default function ProductsList({
             key={f.key}
             type="button"
             onClick={() => setStockStatusFilter(f.key)}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-[11px] font-semibold transition-all cursor-pointer text-center ${
               stockStatusFilter === f.key
                 ? 'bg-brand text-white'
                 : 'bg-card border border-border-subtle text-text-secondary hover:text-text-primary'

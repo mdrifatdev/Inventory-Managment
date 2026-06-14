@@ -252,13 +252,13 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         {/* Category pills */}
         <div className="space-y-1.5">
           <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Category</label>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex overflow-x-auto gap-1.5 scrollbar-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
             {CATEGORIES.map((cat) => (
               <button
                 type="button"
                 key={cat}
                 onClick={() => setCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
                   category === cat
                     ? 'bg-brand text-white border-brand'
                     : 'bg-pagebg border-border-subtle text-text-secondary hover:bg-brand-light hover:text-brand'

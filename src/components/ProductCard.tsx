@@ -80,7 +80,7 @@ export function ProductCard({
               type="button"
               disabled={product.quantity <= 0}
               onClick={(e) => onDecrement(e, product)}
-              className="flex-1 py-2 px-1.5 bg-warning-light hover:brightness-95 active:brightness-90 text-warning-primary disabled:opacity-35 border border-warning-primary/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+              className="flex-1 py-2.5 px-1.5 bg-warning-light hover:brightness-95 active:brightness-90 text-warning-primary disabled:opacity-35 border border-warning-primary/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
               title="Record Stock Used"
             >
               <Minus className="h-3 w-3 stroke-[2.5]" />
@@ -99,7 +99,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={(e) => onIncrement(e, product)}
-              className="flex-1 py-2 px-1.5 bg-success-light hover:brightness-95 active:brightness-90 text-success border border-success/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+              className="flex-1 py-2.5 px-1.5 bg-success-light hover:brightness-95 active:brightness-90 text-success border border-success/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
               title="Record Stock Addition"
             >
               <Plus className="h-3 w-3 stroke-[2.5]" />
