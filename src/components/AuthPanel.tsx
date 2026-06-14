@@ -103,18 +103,22 @@ export default function AuthPanel({
     }
   };
 
+  const isForceOffline = localStorage.getItem('force_offline') === 'true';
+
   return (
     <div className="max-w-md mx-auto pb-12 animate-fade-in space-y-4">
 
       {/* Page heading */}
       <div>
         <h2 className="font-bold text-lg text-text-primary tracking-tight">
-          {sessionUser ? 'Account' : 'Sign In'}
+          {isForceOffline ? 'Offline Mode' : sessionUser ? 'Account' : 'Sign In'}
         </h2>
         <p className="text-xs text-text-secondary mt-0.5">
-          {sessionUser
-            ? 'Manage your session and preferences.'
-            : 'Sign in to manage your inventory.'}
+          {isForceOffline
+            ? 'Running locally in your browser.'
+            : sessionUser
+              ? 'Manage your session and preferences.'
+              : 'Sign in to manage your inventory.'}
         </p>
       </div>
 
@@ -135,7 +139,64 @@ export default function AuthPanel({
         </div>
       )}
 
-      {sessionUser ? (
+      {isForceOffline ? (
+        /* ── Offline Mode Panel ────────────────────────────────────── */
+        <div className="rounded-xl border border-border-subtle bg-card overflow-hidden">
+          <div className="px-5 pt-6 pb-5 flex flex-col items-center gap-2.5 border-b border-border-subtle bg-gradient-to-b from-warning-light/35 to-transparent">
+            <div className="relative">
+              <div className="h-14 w-14 rounded-full bg-warning-light flex items-center justify-center">
+                <WifiOff className="h-7 w-7 text-warning-primary" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-bold text-text-primary">Offline / Local Mode Enabled</p>
+              <p className="text-[10px] text-text-secondary mt-0.5">Your inventory data is stored locally in your browser.</p>
+            </div>
+          </div>
+
+          <div className="px-5 py-3 divide-y divide-border-subtle">
+            <div className="flex justify-between items-center py-2.5 text-xs">
+              <span className="text-text-secondary">Storage</span>
+              <span className="bg-warning-light text-warning-primary text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
+                LocalStorage (Offline)
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2.5 text-xs">
+              <span className="text-text-secondary">Status</span>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-warning-primary">
+                <WifiOff className="h-3.5 w-3.5" /> Forced Offline
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2.5 text-xs">
+              <span className="text-text-secondary">Theme</span>
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              >
+                {isDarkMode
+                  ? <><Moon className="h-3.5 w-3.5 text-brand" /> Dark Mode</>
+                  : <><Sun className="h-3.5 w-3.5 text-amber-500" /> Light Mode</>
+                }
+              </button>
+            </div>
+          </div>
+
+          <div className="px-5 pb-5 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem('force_offline');
+                window.location.reload();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-brand text-white hover:brightness-105 font-bold text-xs transition-all cursor-pointer shadow-sm"
+            >
+              <Wifi className="h-3.5 w-3.5" />
+              <span>Enable Cloud Sync Mode</span>
+            </button>
+          </div>
+        </div>
+      ) : sessionUser ? (
         /* ── Logged-in state ────────────────────────────────────── */
         <div className="rounded-xl border border-border-subtle bg-card overflow-hidden">
           {/* Avatar header */}
@@ -304,6 +365,23 @@ export default function AuthPanel({
                 ) : (
                   <><LogIn className="h-3.5 w-3.5" /><span>{loading ? 'Signing In...' : 'Sign In'}</span></>
                 )}
+              </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-border-subtle"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-text-muted font-bold uppercase">Or</span>
+                <div className="flex-grow border-t border-border-subtle"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('force_offline', 'true');
+                  window.location.reload();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-pagebg hover:bg-border-subtle text-text-secondary hover:text-text-primary font-bold text-xs transition-all cursor-pointer border border-border-subtle"
+              >
+                <span>Continue in Local Offline Mode</span>
               </button>
             </form>
           </div>

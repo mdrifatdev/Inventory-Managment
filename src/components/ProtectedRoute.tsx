@@ -38,6 +38,10 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!user) {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return <>{children}</>;
+    }
     return <Navigate to="/auth" />;
   }
 
