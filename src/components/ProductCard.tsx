@@ -11,6 +11,7 @@ interface ProductCardProps {
   onHistory: (e: React.MouseEvent, product: Product) => void;
   onEdit: (e: React.MouseEvent, product: Product) => void;
   onDelete: (e: React.MouseEvent, product: Product) => void;
+  key?: React.Key;
 }
 
 export function ProductCard({ 
@@ -28,7 +29,7 @@ export function ProductCard({
   return (
     <div 
       onClick={() => onInspect(product)}
-      className="group relative bg-white border border-border-subtle rounded-3xl overflow-hidden cursor-pointer shadow-xs hover:shadow-md hover:border-brand/35 transition-all duration-300 flex flex-col justify-between"
+      className="group relative bg-card border border-border-subtle rounded-3xl overflow-hidden cursor-pointer shadow-xs hover:shadow-md hover:border-brand/35 transition-all duration-300 flex flex-col justify-between"
     >
       <div className="relative aspect-video sm:aspect-square bg-sidebarbg overflow-hidden shrink-0 border-b border-border-subtle">
         <img 
@@ -57,7 +58,7 @@ export function ProductCard({
         <div className="space-y-1">
           <div className="text-[11px] text-text-secondary font-mono flex items-center justify-between">
             <span className="truncate max-w-[120px] font-semibold text-brand">{product.category}</span>
-            <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${product.isUsed ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-[#005FB0]'}`}>
+            <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${product.isUsed ? 'bg-warning-light text-warning-primary' : 'bg-brand-light text-brand'}`}>
               {product.isUsed ? 'Used' : 'New'}
             </span>
           </div>
@@ -79,7 +80,7 @@ export function ProductCard({
               type="button"
               disabled={product.quantity <= 0}
               onClick={(e) => onDecrement(e, product)}
-              className="flex-1 py-2 px-1.5 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 disabled:opacity-35 disabled:hover:bg-red-50 border border-red-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+              className="flex-1 py-2 px-1.5 bg-warning-light hover:brightness-95 active:brightness-90 text-warning-primary disabled:opacity-35 border border-warning-primary/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
               title="Record Stock Used"
             >
               <Minus className="h-3 w-3 stroke-[2.5]" />
@@ -89,7 +90,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={(e) => onHistory(e, product)}
-              className="p-2 sm:p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-xxs shrink-0"
+              className="p-2 sm:p-2.5 bg-pagebg hover:bg-border-subtle text-text-secondary hover:text-text-primary border border-border-subtle rounded-xl transition-all flex items-center justify-center cursor-pointer shadow-xxs shrink-0"
               title="View Sell & Audit History"
             >
               <History className="h-4 w-4" />
@@ -98,7 +99,7 @@ export function ProductCard({
             <button
               type="button"
               onClick={(e) => onIncrement(e, product)}
-              className="flex-1 py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 border border-emerald-100 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
+              className="flex-1 py-2 px-1.5 bg-success-light hover:brightness-95 active:brightness-90 text-success border border-success/20 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xxs"
               title="Record Stock Addition"
             >
               <Plus className="h-3 w-3 stroke-[2.5]" />

@@ -14,6 +14,7 @@ import {
 import { Product, Category, InventoryLog } from '../types';
 import StockModal from '../components/StockModal';
 import ProductHistoryDrawer from '../components/ProductHistoryDrawer';
+import { ProductCard } from '../components/ProductCard';
 import { formatDateTime } from '../lib/dateUtils';
 
 interface ProductsListProps {
@@ -231,175 +232,27 @@ export default function ProductsList({
         ))}
       </div>
 
-      {/* Product list table */}
-      <div className="rounded-xl border border-border-subtle bg-card overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="py-16 text-center">
-            <Package className="h-8 w-8 text-text-muted mx-auto mb-2" />
-            <p className="text-sm text-text-secondary">No products found.</p>
-          </div>
-        ) : (
-          <>
-            {/* Table header (desktop) */}
-            <div className="hidden md:grid md:grid-cols-[auto_1fr_120px_100px_90px_auto] gap-4 items-center px-5 py-3 bg-pagebg border-b border-border-subtle text-[10px] font-bold text-text-muted uppercase tracking-wider">
-              <span className="w-16">Image</span>
-              <span>Product Details</span>
-              <span>Category</span>
-              <span>Added</span>
-              <span className="text-center">In Stock</span>
-              <span className="text-right">Manage</span>
-            </div>
-
-            {/* Rows */}
-            <div className="divide-y divide-border-subtle">
-              {filtered.map((product) => {
-                const low = isLowStock(product);
-                const out = isOutOfStock(product);
-                const dateStr = product.addedAt
-                  ? formatDateTime(product.addedAt).dateStr
-                  : '—';
-
-                const displayImage = product.image_url || 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&auto=format&fit=crop&q=60';
-
-                return (
-                  <div
-                    key={product.id}
-                    className={`grid grid-cols-1 md:grid-cols-[auto_1fr_120px_100px_90px_auto] gap-3 md:gap-4 items-center px-4 md:px-5 py-4 hover:bg-pagebg/50 transition-colors ${
-                      low ? 'border-l-4 border-l-red-400' : out ? 'border-l-4 border-l-gray-300' : 'border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    {/* Desktop Image */}
-                    <div className="hidden md:block group relative cursor-pointer" onClick={(e) => handleImageClick(e, displayImage)}>
-                      <img
-                        src={displayImage}
-                        alt={product.name}
-                        className="h-16 w-16 rounded-lg object-cover border border-border-subtle shadow-sm group-hover:brightness-90 transition-all"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&auto=format&fit=crop&q=60';
-                        }}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg">
-                        <Maximize2 className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
-
-                    {/* Name + SKU */}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-3">
-                        {/* Mobile image */}
-                        <div className="md:hidden relative group cursor-pointer shrink-0" onClick={(e) => handleImageClick(e, displayImage)}>
-                          <img
-                            src={displayImage}
-                            alt={product.name}
-                            className="h-14 w-14 rounded-lg object-cover border border-border-subtle shadow-sm"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=400&auto=format&fit=crop&q=60';
-                            }}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-text-primary truncate">{product.name}</p>
-                          <p className="text-[11px] text-text-muted font-mono mt-0.5">{product.sku}</p>
-                          
-                          {/* Mobile-only extra info */}
-                          <div className="md:hidden flex items-center gap-2 mt-1.5 text-[11px] text-text-secondary">
-                            <span className="truncate">{product.category}</span>
-                            <span>·</span>
-                            <span>{dateStr}</span>
-                            {low && (
-                              <>
-                                <span>·</span>
-                                <span className="text-red-500 font-bold flex items-center gap-0.5"><AlertTriangle className="h-3 w-3" /> Low</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Category */}
-                    <div className="hidden md:block">
-                      <span className="text-xs text-text-secondary truncate">{product.category}</span>
-                    </div>
-
-                    {/* Date */}
-                    <div className="hidden md:block">
-                      <span className="text-[11px] text-text-muted font-medium">{dateStr}</span>
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="hidden md:flex flex-col items-center justify-center">
-                      <span className={`text-base font-bold font-mono ${out ? 'text-gray-400' : low ? 'text-red-500' : 'text-text-primary'}`}>
-                        {product.quantity}
-                      </span>
-                      {low && <span className="text-[9px] text-red-500 font-bold uppercase tracking-widest mt-0.5 flex items-center gap-0.5"><AlertTriangle className="h-2.5 w-2.5" /> Low</span>}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-1.5 mt-2 md:mt-0">
-                      
-                      {/* Mobile qty display inline with buttons */}
-                      <div className="md:hidden flex items-center mr-auto pl-1">
-                        <span className={`text-sm font-bold font-mono ${out ? 'text-gray-400' : low ? 'text-red-500' : 'text-text-primary'}`}>
-                          {product.quantity} <span className="text-[10px] font-sans font-medium text-text-muted">in stock</span>
-                        </span>
-                      </div>
-
-                      {/* [+ Stock In] */}
-                      <button
-                        onClick={(e) => handleStockInClick(e, product)}
-                        className="h-8 px-2.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-emerald-200"
-                        title="Stock In"
-                      >
-                        <Plus className="h-3.5 w-3.5" /> In
-                      </button>
-
-                      {/* [History] */}
-                      <button
-                        onClick={(e) => handleHistoryClick(e, product)}
-                        className="h-8 px-2.5 rounded-lg bg-pagebg text-text-secondary hover:text-brand hover:bg-brand-light text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-border-subtle"
-                        title="Product History"
-                      >
-                        <HistoryIcon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">History</span>
-                      </button>
-
-                      {/* [- Used] */}
-                      <button
-                        onClick={(e) => handleStockUsedClick(e, product)}
-                        disabled={product.quantity <= 0}
-                        className="h-8 px-2.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-red-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Used"
-                      >
-                        <Minus className="h-3.5 w-3.5" /> Used
-                      </button>
-
-                      <div className="h-6 w-px bg-border-subtle mx-1 hidden sm:block"></div>
-
-                      {/* Edit */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(product); }}
-                        className="h-8 w-8 rounded-lg text-text-muted hover:bg-pagebg hover:text-text-primary flex items-center justify-center transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={(e) => confirmDelete(e, product.id)}
-                        className="h-8 w-8 rounded-lg text-text-muted hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-colors cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-border-subtle bg-card py-16 text-center shadow-sm">
+          <Package className="h-8 w-8 text-text-muted mx-auto mb-2" />
+          <p className="text-sm text-text-secondary">No products found.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onInspect={(p) => setHistoryDrawerProduct(p)}
+              onIncrement={(e, p) => handleStockInClick(e, p)}
+              onDecrement={(e, p) => handleStockUsedClick(e, p)}
+              onHistory={(e, p) => handleHistoryClick(e, p)}
+              onEdit={(e, p) => { onEdit(p); }}
+              onDelete={(e, p) => { confirmDelete(e, p.id); }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Delete confirmation modal */}
       {deleteConfirm && (
