@@ -95,7 +95,7 @@ export default function SettingsPanel({
       </div>
 
       {/* Supabase Connection Setup */}
-      <form onSubmit={handleSave} className="bg-white border border-border-subtle rounded-3xl p-6 md:p-8 space-y-6 shadow-xs">
+      <form onSubmit={handleSave} className="bg-card border border-border-subtle rounded-3xl p-6 md:p-8 space-y-6 shadow-xs">
         <div className="flex items-center gap-3 border-b border-border-subtle pb-4">
           <div className="bg-[#3ecf8e]/10 p-2 rounded-full text-[#3ecf8e] shrink-0">
             <Database className="h-5 w-5" />
@@ -208,7 +208,7 @@ export default function SettingsPanel({
       </form>
 
       {/* Appearance Customization */}
-      <div className="bg-white border border-border-subtle rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+      <div className="bg-card border border-border-subtle rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="bg-brand-light p-2.5 rounded-full text-brand shrink-0">
             {isDarkMode ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}

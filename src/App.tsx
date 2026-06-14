@@ -136,7 +136,7 @@ export default function App() {
   const lowStockCount = products.filter(p => p.quantity <= p.minThreshold && p.quantity > 0).length;
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-pagebg text-text-primary font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-pagebg text-text-primary font-sans antialiased">
       <Navbar 
         lowStockCount={lowStockCount}
         isDarkMode={isDarkMode}

@@ -156,7 +156,7 @@ export default function Dashboard({
         </div>
 
         {/* New Stock Units Card */}
-        <div className="bg-white border border-border-subtle rounded-3xl p-6 shadow-xs flex flex-col justify-between min-h-[160px] group hover:border-[#005FB0]/40 transition-all duration-300">
+        <div className="bg-card border border-border-subtle rounded-3xl p-6 shadow-xs flex flex-col justify-between min-h-[160px] group hover:border-[#005FB0]/40 transition-all duration-300">
           <div className="flex items-center justify-between">
             <span className="text-text-secondary text-xs font-mono uppercase tracking-widest font-bold">New Inventory</span>
             <div className="bg-[#005FB0]/10 text-[#005FB0] p-2 rounded-xl group-hover:bg-[#005FB0] group-hover:text-white transition-colors">
@@ -174,7 +174,7 @@ export default function Dashboard({
         </div>
 
         {/* Used/Renovated Stock Card */}
-        <div className="bg-white border border-border-subtle rounded-3xl p-6 shadow-xs flex flex-col justify-between min-h-[160px] group hover:border-warning-primary/40 transition-all duration-300">
+        <div className="bg-card border border-border-subtle rounded-3xl p-6 shadow-xs flex flex-col justify-between min-h-[160px] group hover:border-warning-primary/40 transition-all duration-300">
           <div className="flex items-center justify-between">
             <span className="text-text-secondary text-xs font-mono uppercase tracking-widest font-bold">Used / Salvaged</span>
             <div className="bg-warning-light text-warning-primary p-2 rounded-xl group-hover:bg-warning-primary group-hover:text-white transition-colors">
@@ -226,7 +226,7 @@ export default function Dashboard({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Category Shares (Donut/Breakdown) */}
-        <div className="bg-white border border-border-subtle rounded-3xl p-6 shadow-xs lg:col-span-1 flex flex-col">
+        <div className="bg-card border border-border-subtle rounded-3xl p-6 shadow-xs lg:col-span-1 flex flex-col">
           <div className="flex items-center gap-2 pb-4 border-b border-border-subtle">
             <Layers className="h-5 w-5 text-brand" />
             <div>
@@ -319,7 +319,7 @@ export default function Dashboard({
         </div>
 
         {/* Right 2/3: New vs Used Stock Share comparison */}
-        <div className="bg-white border border-border-subtle rounded-3xl p-6 shadow-xs lg:col-span-2 flex flex-col justify-between">
+        <div className="bg-card border border-border-subtle rounded-3xl p-6 shadow-xs lg:col-span-2 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
               <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ export default function Dashboard({
       </div>
 
       {/* Section 3: Recent Activity Logging */}
-      <div className="bg-white border border-border-subtle rounded-3xl p-6 shadow-xs">
+      <div className="bg-card border border-border-subtle rounded-3xl p-6 shadow-xs">
         <div className="flex items-center justify-between pb-4 border-b border-border-subtle">
           <div className="flex items-center gap-2">
             <RotateCcw className="h-5 w-5 text-brand" />
