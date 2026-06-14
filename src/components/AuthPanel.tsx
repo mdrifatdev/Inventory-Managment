@@ -7,25 +7,32 @@ import {
   LogIn,
   UserPlus,
   ShieldAlert,
-  Database,
   CheckCircle,
   Eye,
   EyeOff,
   Zap,
+  Sun,
+  Moon,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface AuthPanelProps {
   sessionUser: SupabaseUser | null;
   isOfflineModeEnabled: boolean;
   onViewChange: (view: string) => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
 export default function AuthPanel({
   sessionUser,
-  isOfflineModeEnabled,
   onViewChange,
+  isDarkMode,
+  onToggleDarkMode,
 }: AuthPanelProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -33,6 +40,7 @@ export default function AuthPanel({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const isOnline = useOnlineStatus();
 
   const supabase = getSupabaseClient();
   const isSyncConfigured = !!supabase;
@@ -42,7 +50,7 @@ export default function AuthPanel({
     if (!isSyncConfigured || !supabase) {
       setMessage({
         type: 'error',
-        text: 'Supabase client is not initialized. Please verify your URL and Anon Key in Settings first.',
+        text: 'Supabase is not configured. Check your .env file.',
       });
       return;
     }
@@ -75,7 +83,7 @@ export default function AuthPanel({
         setMessage({ type: 'success', text: `Welcome back, ${data.user?.email}!` });
       }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Authentication failed. Check your credentials.' });
+      setMessage({ type: 'error', text: err.message || 'Authentication failed.' });
     } finally {
       setLoading(false);
     }
@@ -96,24 +104,24 @@ export default function AuthPanel({
   };
 
   return (
-    <div className="max-w-md mx-auto pb-12 animate-fade-in">
+    <div className="max-w-md mx-auto pb-12 animate-fade-in space-y-4">
 
       {/* Page heading */}
-      <div className="mb-6">
-        <h2 className="font-bold text-xl text-text-primary tracking-tight">
-          {sessionUser ? 'Account Profile' : 'Authentication'}
+      <div>
+        <h2 className="font-bold text-lg text-text-primary tracking-tight">
+          {sessionUser ? 'Account' : 'Sign In'}
         </h2>
-        <p className="text-xs text-text-secondary mt-1 leading-relaxed">
+        <p className="text-xs text-text-secondary mt-0.5">
           {sessionUser
-            ? 'Manage your active session and database permissions.'
-            : 'Sign in to sync inventory data with your Supabase backend.'}
+            ? 'Manage your session and preferences.'
+            : 'Sign in to manage your inventory.'}
         </p>
       </div>
 
       {/* Alert message */}
       {message && (
         <div
-          className={`mb-4 flex items-start gap-3 px-4 py-3 rounded-xl border text-xs font-medium leading-relaxed
+          className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-xs font-medium leading-relaxed
             ${message.type === 'success'
               ? 'bg-success-light text-success border-success/20'
               : 'bg-warning-light text-warning-primary border-warning-primary/20'
@@ -128,15 +136,15 @@ export default function AuthPanel({
       )}
 
       {sessionUser ? (
-        /* ── Logged-in state ────────────────────────────────────────────── */
-        <div className="rounded-2xl border border-border-subtle bg-card overflow-hidden">
+        /* ── Logged-in state ────────────────────────────────────── */
+        <div className="rounded-xl border border-border-subtle bg-card overflow-hidden">
           {/* Avatar header */}
-          <div className="px-6 pt-8 pb-6 flex flex-col items-center gap-3 border-b border-border-subtle bg-gradient-to-b from-brand-light/40 to-transparent">
+          <div className="px-5 pt-6 pb-5 flex flex-col items-center gap-2.5 border-b border-border-subtle bg-gradient-to-b from-brand-light/30 to-transparent">
             <div className="relative">
-              <div className="h-16 w-16 rounded-full bg-brand-light flex items-center justify-center">
-                <User className="h-8 w-8 text-brand" />
+              <div className="h-14 w-14 rounded-full bg-brand-light flex items-center justify-center">
+                <User className="h-7 w-7 text-brand" />
               </div>
-              <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-success border-2 border-card" />
+              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-success border-2 border-card" />
             </div>
             <div className="text-center">
               <p className="text-xs font-bold text-text-primary">Active Session</p>
@@ -145,35 +153,52 @@ export default function AuthPanel({
           </div>
 
           {/* Details */}
-          <div className="px-6 py-4 divide-y divide-border-subtle">
+          <div className="px-5 py-3 divide-y divide-border-subtle">
             <div className="flex justify-between items-center py-2.5 text-xs">
-              <span className="text-text-secondary font-medium">Provider</span>
+              <span className="text-text-secondary">Provider</span>
               <span className="bg-brand-light text-brand text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
                 {sessionUser.app_metadata?.provider || 'Email'}
               </span>
             </div>
             <div className="flex justify-between items-center py-2.5 text-xs">
-              <span className="text-text-secondary font-medium">Last Sign-In</span>
-              <span className="font-mono text-text-secondary text-[10px]">
+              <span className="text-text-secondary">Last Sign-In</span>
+              <span className="font-mono text-text-muted text-[10px]">
                 {sessionUser.last_sign_in_at
                   ? new Date(sessionUser.last_sign_in_at).toLocaleString()
                   : 'Just now'}
               </span>
             </div>
-            <div className="flex justify-between items-start py-2.5 text-xs gap-4">
-              <span className="text-text-secondary font-medium shrink-0">User ID</span>
-              <span className="font-mono text-text-muted text-[10px] text-right break-all">{sessionUser.id}</span>
+            <div className="flex justify-between items-center py-2.5 text-xs">
+              <span className="text-text-secondary">Status</span>
+              <span className={`flex items-center gap-1.5 text-[11px] font-semibold ${isOnline ? 'text-emerald-600' : 'text-red-500'}`}>
+                {isOnline
+                  ? <><Wifi className="h-3.5 w-3.5" /> Online</>
+                  : <><WifiOff className="h-3.5 w-3.5" /> Offline</>
+                }
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2.5 text-xs">
+              <span className="text-text-secondary">Theme</span>
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              >
+                {isDarkMode
+                  ? <><Moon className="h-3.5 w-3.5 text-brand" /> Dark Mode</>
+                  : <><Sun className="h-3.5 w-3.5 text-amber-500" /> Light Mode</>
+                }
+              </button>
             </div>
           </div>
 
           {/* Sign-out */}
-          <div className="px-6 pb-6 pt-2">
+          <div className="px-5 pb-5 pt-2">
             <button
-              id="auth-signout-btn"
               type="button"
               onClick={handleSignOut}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-warning-light text-warning-primary hover:brightness-95 font-bold text-xs transition-all cursor-pointer border border-warning-primary/15 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-warning-light text-warning-primary hover:brightness-95 font-bold text-xs transition-all cursor-pointer border border-warning-primary/15 disabled:opacity-50"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>{loading ? 'Signing out...' : 'Sign Out'}</span>
@@ -182,113 +207,83 @@ export default function AuthPanel({
         </div>
 
       ) : (
-        /* ── Sign-in / Sign-up ──────────────────────────────────────────── */
-        <div className="rounded-2xl border border-border-subtle bg-card overflow-hidden shadow-sm">
+        /* ── Sign-in / Sign-up ──────────────────────────────────── */
+        <div className="rounded-xl border border-border-subtle bg-card overflow-hidden shadow-sm">
 
-          {/* Card header banner */}
-          <div className="px-6 pt-7 pb-5 border-b border-border-subtle bg-gradient-to-br from-brand-light/50 via-brand-light/20 to-transparent">
+          {/* Card header */}
+          <div className="px-5 pt-6 pb-4 border-b border-border-subtle bg-gradient-to-br from-brand-light/40 via-brand-light/15 to-transparent">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-9 w-9 rounded-xl bg-brand flex items-center justify-center shrink-0">
-                <Zap className="h-4.5 w-4.5 text-white fill-none stroke-current" />
+              <div className="h-8 w-8 rounded-lg bg-brand flex items-center justify-center shrink-0">
+                <Zap className="h-4 w-4 text-white fill-none stroke-current" />
               </div>
               <div>
                 <p className="text-sm font-bold text-text-primary leading-none">Electric Inventory</p>
-                <p className="text-[10px] text-text-muted mt-0.5">Secure cloud authentication</p>
+                <p className="text-[10px] text-text-muted mt-0.5">Secure authentication</p>
               </div>
             </div>
             {/* Segmented tab */}
-            <div className="flex bg-inputbg p-1 rounded-xl gap-1">
+            <div className="flex bg-pagebg p-1 rounded-lg gap-1">
               <button
-                id="auth-toggle-signin-btn"
                 type="button"
                 onClick={() => { setIsSignUp(false); setMessage(null); }}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer
-                  ${!isSignUp ? 'bg-white text-text-primary shadow-sm dark:bg-border-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer
+                  ${!isSignUp ? 'bg-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
               >
                 Sign In
               </button>
               <button
-                id="auth-toggle-signup-btn"
                 type="button"
                 onClick={() => { setIsSignUp(true); setMessage(null); }}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer
-                  ${isSignUp ? 'bg-white text-text-primary shadow-sm dark:bg-border-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer
+                  ${isSignUp ? 'bg-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'}`}
               >
                 Create Account
               </button>
             </div>
           </div>
 
-          {/* Form body */}
-          <div className="px-6 py-6">
-
-            {/* Unconfigured warning */}
+          {/* Form */}
+          <div className="px-5 py-5">
             {!isSyncConfigured && (
-              <div className="mb-5 flex gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30">
-                <Database className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-                <div>
-                  <p className="text-[11px] font-bold text-amber-800 dark:text-amber-400">Backend not configured</p>
-                  <p className="text-[10.5px] text-amber-700 dark:text-amber-300 mt-0.5 leading-relaxed">
-                    Add your Supabase credentials in Settings to enable authentication.
-                  </p>
-                  <button
-                    id="auth-goto-settings-btn"
-                    type="button"
-                    onClick={() => onViewChange('settings')}
-                    className="text-[11px] font-bold underline text-amber-700 dark:text-amber-400 hover:opacity-80 mt-1 cursor-pointer"
-                  >
-                    Open Settings &rarr;
-                  </button>
-                </div>
+              <div className="mb-4 flex gap-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  Supabase is not configured. Add your credentials in the <code className="font-mono font-bold">.env</code> file.
+                </p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Email */}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="auth-email-input"
-                  className="text-[10px] font-bold font-mono text-text-muted uppercase tracking-widest"
-                >
-                  Email
-                </label>
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
                   <input
-                    id="auth-email-input"
                     type="email"
                     required
                     disabled={loading || !isSyncConfigured}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-inputbg border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all disabled:opacity-50"
+                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-pagebg border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all disabled:opacity-50"
                   />
                 </div>
               </div>
 
-              {/* Password */}
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="auth-password-input"
-                  className="text-[10px] font-bold font-mono text-text-muted uppercase tracking-widest"
-                >
-                  Password
-                </label>
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
                   <input
-                    id="auth-password-input"
                     type={showPassword ? 'text' : 'password'}
                     required
                     disabled={loading || !isSyncConfigured}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={isSignUp ? 'Minimum 6 characters' : '••••••••'}
-                    className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-inputbg border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all disabled:opacity-50"
+                    className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-pagebg border border-border-subtle text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 transition-all disabled:opacity-50"
                   />
                   <button
-                    id="auth-toggle-password-view"
                     type="button"
                     disabled={loading || !isSyncConfigured}
                     onClick={() => setShowPassword(!showPassword)}
@@ -299,34 +294,25 @@ export default function AuthPanel({
                 </div>
               </div>
 
-              {/* Submit */}
               <button
-                id="auth-submit-btn"
                 type="submit"
                 disabled={loading || !isSyncConfigured}
-                className="mt-1 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand hover:brightness-105 active:scale-[0.98] text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-40"
+                className="mt-1 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-brand hover:brightness-105 active:scale-[0.98] text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-40"
               >
                 {isSignUp ? (
-                  <>
-                    <UserPlus className="h-3.5 w-3.5" />
-                    <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
-                  </>
+                  <><UserPlus className="h-3.5 w-3.5" /><span>{loading ? 'Creating Account...' : 'Create Account'}</span></>
                 ) : (
-                  <>
-                    <LogIn className="h-3.5 w-3.5" />
-                    <span>{loading ? 'Signing In...' : 'Sign In'}</span>
-                  </>
+                  <><LogIn className="h-3.5 w-3.5" /><span>{loading ? 'Signing In...' : 'Sign In'}</span></>
                 )}
               </button>
             </form>
           </div>
 
-          {/* Card footer */}
-          <div className="px-6 pb-5 border-t border-border-subtle pt-4">
-            <p className="text-[10.5px] text-text-muted text-center leading-relaxed">
+          <div className="px-5 pb-4 border-t border-border-subtle pt-3">
+            <p className="text-[10px] text-text-muted text-center leading-relaxed">
               {isSignUp
-                ? 'Your account will be stored in your connected Supabase auth tables.'
-                : 'Sign in to enable cloud sync for your inventory data.'}
+                ? 'Your account will be stored in your Supabase auth system.'
+                : 'Sign in to enable cloud sync for your inventory.'}
             </p>
           </div>
         </div>

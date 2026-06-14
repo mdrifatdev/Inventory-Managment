@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  ArrowLeft, 
-  Upload, 
-  Sparkles, 
-  Calendar, 
-  Layers, 
+import {
+  ArrowLeft,
+  Upload,
+  Sparkles,
   AlertTriangle,
-  Info,
   CheckCircle2,
   X,
-  FileImage,
   ImageIcon
 } from 'lucide-react';
-import { Product, Category, Settings } from '../types';
+import { Product, Category } from '../types';
 import { loadSettings } from '../lib/supabaseClient';
 
 interface ProductFormProps {
@@ -46,14 +41,11 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
   const [sku, setSku] = useState('');
   const [category, setCategory] = useState<Category>('Cables & Wiring');
   const [isUsed, setIsUsed] = useState<boolean>(false);
-  const [addedAt, setAddedAt] = useState<string>(() => new Date().toISOString().split('T')[0]);
-  const [usedAt, setUsedAt] = useState<string>('');
   const [quantity, setQuantity] = useState(0);
-  const [minThreshold, setMinThreshold] = useState(10);
-  const [brand, setBrand] = useState('');
+  const [minThreshold, setMinThreshold] = useState(5);
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  
+
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -65,20 +57,9 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
       setCategory(productToEdit.category as Category);
       setQuantity(productToEdit.quantity);
       setMinThreshold(productToEdit.minThreshold);
-      setBrand(productToEdit.brand);
       setDescription(productToEdit.description);
       setImageUrl(productToEdit.image_url);
       setIsUsed(productToEdit.isUsed ?? false);
-      if (productToEdit.addedAt) {
-        setAddedAt(productToEdit.addedAt.split('T')[0]);
-      } else {
-        setAddedAt(new Date().toISOString().split('T')[0]);
-      }
-      if (productToEdit.usedAt) {
-        setUsedAt(productToEdit.usedAt.split('T')[0]);
-      } else {
-        setUsedAt('');
-      }
     } else {
       generateSmartSku();
     }
@@ -104,7 +85,6 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       await handleImageUpload(e.dataTransfer.files[0]);
     }
@@ -119,7 +99,6 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
   const handleImageUpload = async (file: File) => {
     setUploading(true);
     setFeedback(null);
-
     const settings = loadSettings();
     const hasCloudinary = settings.cloudinaryCloudName && settings.cloudinaryUploadPreset;
 
@@ -128,20 +107,18 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', settings.cloudinaryUploadPreset);
-
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/${settings.cloudinaryCloudName}/image/upload`,
           { method: 'POST', body: formData }
         );
-
         if (response.ok) {
           const data = await response.json();
           setImageUrl(data.secure_url || data.url);
-          setFeedback({ type: 'success', text: 'Image successfully uploaded to your Cloudinary storage!' });
+          setFeedback({ type: 'success', text: 'Image uploaded successfully!' });
         } else {
-          throw new Error("Cloudinary upload failed");
+          throw new Error("Upload failed");
         }
-      } catch (err) {
+      } catch {
         convertToBase64(file);
       }
     } else {
@@ -154,27 +131,23 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     reader.onloadend = () => {
       setImageUrl(reader.result as string);
       setUploading(false);
-      setFeedback({ 
-        type: 'success', 
-        text: 'Compressed image cached in offline database.' 
-      });
+      setFeedback({ type: 'success', text: 'Image saved locally.' });
     };
     reader.onerror = () => {
       setUploading(false);
-      setFeedback({ type: 'error', text: 'Failed to compress or read local image' });
+      setFeedback({ type: 'error', text: 'Failed to read image file.' });
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!name.trim()) {
-      setFeedback({ type: 'error', text: 'Product name is required' });
+      setFeedback({ type: 'error', text: 'Product name is required.' });
       return;
     }
     if (!sku.trim()) {
-      setFeedback({ type: 'error', text: 'sku is required' });
+      setFeedback({ type: 'error', text: 'SKU is required.' });
       return;
     }
 
@@ -183,12 +156,12 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
       sku: sku.trim().toUpperCase(),
       category,
       isUsed,
-      addedAt: addedAt ? new Date(addedAt).toISOString() : new Date().toISOString(),
-      usedAt: isUsed && usedAt ? new Date(usedAt).toISOString() : undefined,
+      addedAt: productToEdit?.addedAt || new Date().toISOString(),
+      usedAt: isUsed ? new Date().toISOString() : undefined,
       quantity: Math.max(0, Math.floor(Number(quantity))),
       minThreshold: Math.max(0, Math.floor(Number(minThreshold))),
-      brand: brand.trim() || "Generic",
-      description: description.trim() || `Professional standard ${category} fittings.`,
+      brand: "Generic",
+      description: description.trim() || '',
       image_url: imageUrl || 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80',
       ...(productToEdit ? { id: productToEdit.id } : {})
     };
@@ -197,345 +170,283 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-12 animate-fade-in">
+    <div className="max-w-2xl mx-auto space-y-5 pb-12 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <button 
+        <button
           onClick={onCancel}
-          className="p-2 text-text-secondary bg-white border border-border-subtle hover:bg-sidebarbg rounded-full shadow-xs transition-colors cursor-pointer"
+          className="p-2 text-text-secondary bg-card border border-border-subtle hover:bg-sidebarbg rounded-lg transition-colors cursor-pointer"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h2 className="font-sans font-bold text-text-primary text-2xl tracking-tight">
-            {productToEdit ? 'Configure Product Details' : 'Reorder / Allocate Stock'}
+          <h2 className="font-bold text-lg text-text-primary tracking-tight">
+            {productToEdit ? 'Edit Product' : 'Add New Product'}
           </h2>
-          <p className="text-xs text-text-secondary font-sans mt-0.5">
-            {productToEdit ? `Modifying properties of SKU: ${productToEdit.sku}` : 'Deploy a new device unit into the catalogue'}
+          <p className="text-xs text-text-secondary mt-0.5">
+            {productToEdit ? `Editing SKU: ${productToEdit.sku}` : 'Add a new item to inventory'}
           </p>
         </div>
       </div>
 
+      {/* Feedback */}
       {feedback && (
-        <div className={`p-4 rounded-2xl flex items-start gap-2.5 border ${
-          feedback.type === 'success' 
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
-            : 'bg-warning-light text-warning-primary border-warning-light/30'
+        <div className={`p-3 rounded-lg flex items-center gap-2 border text-xs font-medium ${
+          feedback.type === 'success'
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : 'bg-warning-light text-warning-primary border-warning-primary/20'
         }`}>
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          <p className="text-xs font-sans font-medium">{feedback.text}</p>
-          <button 
-            onClick={() => setFeedback(null)} 
-            className="ml-auto hover:bg-black/5 p-0.5 rounded-full cursor-pointer"
-          >
-            <X className="h-4 w-4" />
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{feedback.text}</span>
+          <button onClick={() => setFeedback(null)} className="hover:bg-black/5 p-0.5 rounded cursor-pointer">
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white border border-border-subtle rounded-3xl overflow-hidden shadow-xs p-6 md:p-8 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <form onSubmit={handleSubmit} className="bg-card border border-border-subtle rounded-xl overflow-hidden p-5 md:p-6 space-y-5">
+
+        {/* Row 1: Name + SKU */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
+            <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">
               Product Name *
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Copper wiring 3-core 1.5mm"
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-sans text-sm text-text-primary"
+              className="w-full bg-pagebg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-card focus:outline-none transition-all rounded-lg px-3.5 py-2.5 text-sm text-text-primary"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
-              BRAND / MANUFACTURER
-            </label>
-            <input 
-              type="text" 
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              placeholder="e.g. Havells / Schneider / Generic"
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-sans text-sm text-text-primary"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
-            Product Classification (Category)
-          </label>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {CATEGORIES.map((cat) => {
-              const matches = category === cat;
-              return (
-                <button
-                  type="button"
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-sans font-medium transition-all border cursor-pointer ${
-                    matches 
-                      ? 'bg-brand-dark border-brand-dark text-white shadow-xs' 
-                      : 'bg-sidebarbg border-border-subtle text-text-secondary hover:bg-brand-light hover:text-brand-dark'
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold flex justify-between items-center">
-              <span>SKU CODE</span>
-              <button 
-                type="button" 
+            <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide flex justify-between items-center">
+              <span>SKU Code</span>
+              <button
+                type="button"
                 onClick={generateSmartSku}
-                className="text-[10px] text-brand hover:underline flex items-center gap-0.5 font-bold font-sans cursor-pointer"
+                className="text-[10px] text-brand hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
               >
                 <Sparkles className="h-3 w-3" /> Regenerate
               </button>
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               required
               value={sku}
               onChange={(e) => setSku(e.target.value)}
-              placeholder="e.g. CAB-SF-2.5"
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-xs uppercase text-text-primary"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
-              ITEM CONDITION
-            </label>
-            <div className="grid grid-cols-2 gap-1 bg-sidebarbg p-1 border border-border-subtle rounded-xl text-xs h-[42px] items-center">
-              <button
-                type="button"
-                onClick={() => setIsUsed(false)}
-                className={`py-1.5 px-1.5 rounded-lg text-center font-sans font-bold transition-all cursor-pointer text-[10.5px] ${
-                  !isUsed 
-                    ? 'bg-brand text-white shadow-xxs' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/40'
-                }`}
-              >
-                New Item
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsUsed(true)}
-                className={`py-1.5 px-1.5 rounded-lg text-center font-sans font-bold transition-all cursor-pointer text-[10.5px] ${
-                  isUsed 
-                    ? 'bg-warning-primary text-white shadow-xxs' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/40'
-                }`}
-              >
-                Used Item
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-brand" />
-              <span>{isUsed ? "USED / ACQU. DATE" : "ADDED DATE"}</span>
-            </label>
-            <input 
-              type="date"
-              required
-              value={isUsed ? (usedAt || addedAt) : addedAt}
-              onChange={(e) => {
-                if (isUsed) {
-                  setUsedAt(e.target.value);
-                } else {
-                  setAddedAt(e.target.value);
-                }
-              }}
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-xs text-text-primary h-[42px]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
-              INITIAL STOCK LEVEL (QTY)
-            </label>
-            <input 
-              type="number" 
-              min="0"
-              required
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
-              placeholder="100"
-              className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-mono text-sm text-text-primary h-[42px]"
+              placeholder="EL-CAB-1234"
+              className="w-full bg-pagebg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-card focus:outline-none transition-all rounded-lg px-3.5 py-2.5 font-mono text-xs uppercase text-text-primary"
             />
           </div>
         </div>
 
-        <div className="p-4 bg-warning-light/80 border border-warning-primary/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex gap-2 text-warning-primary">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-warning-primary mt-0.5" />
+        {/* Category pills */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Category</label>
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORIES.map((cat) => (
+              <button
+                type="button"
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border cursor-pointer ${
+                  category === cat
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-pagebg border-border-subtle text-text-secondary hover:bg-brand-light hover:text-brand'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Row 2: Condition + Quantity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Condition</label>
+            <div className="grid grid-cols-2 gap-1 bg-pagebg p-1 border border-border-subtle rounded-lg h-[40px] items-center">
+              <button
+                type="button"
+                onClick={() => setIsUsed(false)}
+                className={`py-1.5 rounded-md text-center font-semibold transition-all cursor-pointer text-xs ${
+                  !isUsed
+                    ? 'bg-brand text-white shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                New
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsUsed(true)}
+                className={`py-1.5 rounded-md text-center font-semibold transition-all cursor-pointer text-xs ${
+                  isUsed
+                    ? 'bg-warning-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Used
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">
+              Initial Quantity
+            </label>
+            <input
+              type="number"
+              min="0"
+              required
+              value={quantity}
+              onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              placeholder="0"
+              className="w-full bg-pagebg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-card focus:outline-none transition-all rounded-lg px-3.5 py-2.5 font-mono text-sm text-text-primary h-[40px]"
+            />
+          </div>
+        </div>
+
+        {/* Low stock warning */}
+        <div className="p-3.5 bg-warning-light/60 border border-warning-primary/15 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex gap-2 items-start">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-warning-primary mt-0.5" />
             <div>
-              <h4 className="font-bold text-xs text-warning-primary">Assign Safety Alert Limit</h4>
-              <p className="text-[11px] text-warning-primary/90 font-sans mt-0.5">
-                Triggers console alerts when the product stock counts fall below or equal to this limit.
+              <h4 className="font-bold text-xs text-warning-primary">Low stock warning</h4>
+              <p className="text-[11px] text-text-secondary mt-0.5">
+                Alert when stock falls below this number.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 font-sans">
-            <span className="text-xs text-text-secondary font-semibold">Warning Trigger:</span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-xs text-text-secondary font-medium">Alert when stock falls below</span>
             <input
               type="number"
               min="0"
               value={minThreshold}
               onChange={(e) => setMinThreshold(Math.max(0, parseInt(e.target.value, 10) || 0))}
-              className="w-20 bg-white border border-border-subtle focus:outline-none focus:border-brand rounded-lg px-2.5 py-1 text-center font-mono text-xs font-bold text-text-primary"
+              className="w-16 bg-card border border-border-subtle focus:outline-none focus:border-brand rounded-md px-2 py-1 text-center font-mono text-xs font-bold text-text-primary"
             />
-            <span className="text-xs text-text-secondary font-mono">items</span>
           </div>
         </div>
 
+        {/* Notes */}
         <div className="space-y-1.5">
-          <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold">
-            Technical Specification & Description
-          </label>
-          <textarea 
-            rows={3}
+          <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Notes</label>
+          <textarea
+            rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Technical details of the electric component (ampere rating, wiring insulation, voltage compatibility etc.)"
-            className="w-full bg-sidebarbg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-white focus:outline-none transition-all rounded-xl px-4 py-2.5 font-sans text-xs text-text-primary"
+            placeholder="Optional notes about this product..."
+            className="w-full bg-pagebg border border-border-subtle focus:border-brand focus:ring-1 focus:ring-brand-light focus:bg-card focus:outline-none transition-all rounded-lg px-3.5 py-2.5 text-sm text-text-primary"
           />
         </div>
 
+        {/* Image upload */}
         <div className="space-y-3">
-          <label className="text-xs font-mono uppercase tracking-wider text-text-secondary font-semibold block">
-            Media Attachment (URL / Upload / Presets)
-          </label>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div 
+          <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide block">Product Image</label>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all ${
-                dragActive 
-                  ? 'border-brand bg-brand-light/20' 
-                  : 'border-border-subtle bg-sidebarbg hover:bg-brand-light/10'
+              className={`border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-all ${
+                dragActive
+                  ? 'border-brand bg-brand-light/20'
+                  : 'border-border-subtle bg-pagebg hover:bg-brand-light/10'
               }`}
             >
-              <input
-                id="file-image-picker"
-                type="file"
-                accept="image/*"
-                onChange={handleFileInput}
-                className="hidden"
-              />
-              <label htmlFor="file-image-picker" className="cursor-pointer flex flex-col items-center justify-center space-y-2">
-                <div className="bg-white p-2 w-10 h-10 rounded-full shadow-xxs flex items-center justify-center text-text-secondary border border-border-subtle">
-                  <Upload className="h-5 w-5 stroke-[2] text-brand" />
-                </div>
-                <div>
-                  <p className="text-xs font-sans text-text-primary font-bold">
-                    {uploading ? 'Compressing item media...' : 'Drag item photo or Select File'}
-                  </p>
-                  <p className="text-[10px] text-text-secondary mt-1 font-sans">
-                    Supports high-res PNG, JPG relative upload values
-                  </p>
-                </div>
+              <input id="file-image-picker" type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
+              <label htmlFor="file-image-picker" className="cursor-pointer flex flex-col items-center space-y-1.5">
+                <Upload className="h-5 w-5 text-brand" />
+                <p className="text-xs font-medium text-text-primary">
+                  {uploading ? 'Uploading...' : 'Drag or click to upload'}
+                </p>
+                <p className="text-[10px] text-text-muted">PNG, JPG supported</p>
               </label>
             </div>
 
-            <div className="space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5 bg-sidebarbg p-4 border border-border-subtle rounded-2xl">
-                <label className="text-[10px] font-mono tracking-wider font-bold text-text-secondary">
-                  OR DEFINE RAW IMAGE LINK
-                </label>
-                <div className="flex gap-2 mt-1">
+            <div className="space-y-2 flex flex-col">
+              <div className="bg-pagebg p-3 border border-border-subtle rounded-lg space-y-1.5">
+                <label className="text-[10px] font-bold text-text-secondary tracking-wide uppercase">Or paste image URL</label>
+                <div className="flex gap-1.5 mt-1">
                   <input
                     type="url"
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full bg-white border border-border-subtle focus:outline-none focus:border-brand rounded-lg px-3 py-1.5 font-mono text-xs text-text-primary"
+                    placeholder="https://..."
+                    className="w-full bg-card border border-border-subtle focus:outline-none focus:border-brand rounded-md px-2.5 py-1.5 font-mono text-[11px] text-text-primary"
                   />
                   {imageUrl && (
                     <button
                       type="button"
                       onClick={() => setImageUrl('')}
-                      className="px-2 text-warning-primary border border-border-subtle bg-white rounded-lg hover:bg-warning-light cursor-pointer"
-                      title="Clear image link"
+                      className="px-1.5 text-text-muted hover:text-warning-primary rounded cursor-pointer"
                     >
-                      <X className="h-4.5 w-4.5" />
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
               </div>
-
-              <div className="space-y-1.5 flex-1 flex flex-col justify-end">
-                <span className="text-[10px] font-mono font-bold text-text-secondary block tracking-wider uppercase">
-                  Click to Use Electric Stock Presets
-                </span>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {PRESET_IMAGES.map((preset, idx) => (
-                    <button
-                      type="button"
-                      key={preset.url}
-                      onClick={() => setImageUrl(preset.url)}
-                      className="text-[10px] font-sans font-medium px-2.5 py-1 rounded-full border border-border-subtle bg-white hover:bg-sidebarbg text-text-secondary transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                      <span>{preset.name}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap gap-1 mt-auto">
+                {PRESET_IMAGES.map((preset) => (
+                  <button
+                    type="button"
+                    key={preset.url}
+                    onClick={() => setImageUrl(preset.url)}
+                    className="text-[10px] font-medium px-2 py-1 rounded-full border border-border-subtle bg-card hover:bg-pagebg text-text-secondary transition-colors cursor-pointer"
+                  >
+                    {preset.name}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
           {imageUrl && (
-            <div className="mt-3 flex items-center gap-3 p-3 border border-border-subtle rounded-2xl bg-sidebarbg animate-fade-in">
-              <img 
-                src={imageUrl} 
-                alt="Selected preview" 
-                className="h-14 w-14 object-cover rounded-xl border border-border-subtle"
+            <div className="flex items-center gap-3 p-2.5 border border-border-subtle rounded-lg bg-pagebg animate-fade-in">
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className="h-12 w-12 object-cover rounded-lg border border-border-subtle"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80';
                 }}
               />
-              <div className="text-xs">
+              <div className="text-xs min-w-0">
                 <p className="font-semibold text-text-primary flex items-center gap-1">
-                  <ImageIcon className="h-4 w-4 text-brand" /> Image Attached
+                  <ImageIcon className="h-3.5 w-3.5 text-brand" /> Image attached
                 </p>
-                <p className="text-[10px] text-text-secondary font-mono truncate max-w-sm sm:max-w-md mt-0.5">
-                  {imageUrl.startsWith('data:') ? 'Local Base64 Data Stream' : imageUrl}
+                <p className="text-[10px] text-text-muted font-mono truncate mt-0.5">
+                  {imageUrl.startsWith('data:') ? 'Local file' : imageUrl}
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        <div className="pt-6 border-t border-border-subtle flex items-center justify-end gap-3.5">
+        {/* Actions */}
+        <div className="pt-4 border-t border-border-subtle flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-full border border-border-subtle hover:bg-sidebarbg text-text-secondary font-sans font-medium text-sm transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-lg border border-border-subtle hover:bg-pagebg text-text-secondary font-medium text-sm transition-colors cursor-pointer"
           >
             Cancel
           </button>
-          
           <button
             type="submit"
-            className="px-7 py-2.5 rounded-full bg-brand hover:brightness-110 text-white font-sans font-bold text-sm shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2 rounded-lg bg-brand hover:brightness-110 text-white font-bold text-sm shadow-sm transition-all cursor-pointer"
           >
-            <span>{productToEdit ? 'Accept Modification' : 'Publish Product'}</span>
+            {productToEdit ? 'Save Changes' : 'Add Product'}
           </button>
         </div>
-
       </form>
     </div>
   );
