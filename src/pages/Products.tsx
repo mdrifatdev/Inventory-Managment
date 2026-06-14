@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Trash2,
@@ -58,6 +58,10 @@ export default function ProductsList({
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'low-stock' | 'out-of-stock'>(initialFilter);
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+
+  useEffect(() => {
+    setStockStatusFilter(initialFilter);
+  }, [initialFilter]);
   
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   

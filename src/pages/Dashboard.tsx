@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Package,
   Boxes,
@@ -8,6 +8,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Product, InventoryLog } from '../types';
+import TodayStockDrawer from '../components/TodayStockDrawer';
 
 interface DashboardProps {
   products: Product[];
@@ -23,6 +24,7 @@ export default function Dashboard({
   onViewChange,
   onFilterLowStock,
 }: DashboardProps) {
+  const [activeTodayDrawerType, setActiveTodayDrawerType] = useState<'addition' | 'reduction' | null>(null);
   const totalProducts = products.length;
   const totalStock = products.reduce((acc, p) => acc + p.quantity, 0);
 
@@ -53,7 +55,10 @@ export default function Dashboard({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         {/* Total Products */}
-        <div className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/30 transition-all">
+        <div 
+          onClick={() => onViewChange('products')}
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/50 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Total Products</span>
             <div className="h-8 w-8 rounded-lg bg-brand-light flex items-center justify-center text-brand">
@@ -64,7 +69,10 @@ export default function Dashboard({
         </div>
 
         {/* Total Stock */}
-        <div className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/30 transition-all">
+        <div 
+          onClick={() => onViewChange('products')}
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/50 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Total Stock</span>
             <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
@@ -75,7 +83,10 @@ export default function Dashboard({
         </div>
 
         {/* Stock In Today */}
-        <div className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-emerald-300/50 transition-all">
+        <div 
+          onClick={() => setActiveTodayDrawerType('addition')}
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-emerald-300/80 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Stock In Today</span>
             <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -86,7 +97,10 @@ export default function Dashboard({
         </div>
 
         {/* Stock Used Today */}
-        <div className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-red-300/50 transition-all">
+        <div 
+          onClick={() => setActiveTodayDrawerType('reduction')}
+          className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-red-300/80 transition-all cursor-pointer"
+        >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Stock Used Today</span>
             <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
@@ -164,6 +178,12 @@ export default function Dashboard({
           )}
         </div>
       </div>
+      <TodayStockDrawer 
+        isOpen={activeTodayDrawerType !== null}
+        onClose={() => setActiveTodayDrawerType(null)}
+        logs={logs}
+        type={activeTodayDrawerType || 'addition'}
+      />
     </div>
   );
 }

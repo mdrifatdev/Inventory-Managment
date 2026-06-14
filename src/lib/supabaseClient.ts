@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Product, Settings, InventoryLog } from './types';
+import { Product, Settings, InventoryLog } from '../types';
 
 // Default initial products as high-quality seed data
 export const INITIAL_PRODUCTS: Product[] = [

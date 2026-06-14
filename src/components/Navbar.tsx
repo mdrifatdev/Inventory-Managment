@@ -18,6 +18,8 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 interface NavbarProps {
   lowStockCount: number;
   sessionUser: SupabaseUser | null;
+  onLowStockClick?: () => void;
+  onProductsClick?: () => void;
 }
 
 const navigationItems = [
@@ -28,7 +30,7 @@ const navigationItems = [
   { path: '/auth',      name: 'Account',      icon: UserIcon },
 ];
 
-export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
+export default function Navbar({ lowStockCount, sessionUser, onLowStockClick, onProductsClick }: NavbarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const location = useLocation();
   const currentPath = location.pathname;
@@ -41,7 +43,7 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
 
   const close = () => setIsOpen(false);
 
-  const NavLink = ({ item }: { item: (typeof navigationItems)[0] }) => {
+  const NavLink = ({ item }: { item: (typeof navigationItems)[0]; key?: React.Key }) => {
     const active = isActive(item.path);
     const Icon = item.icon;
     const showBadge = item.path === '/products' && lowStockCount > 0;
@@ -49,7 +51,13 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
     return (
       <Link
         to={item.path}
-        onClick={close}
+        onClick={(e) => {
+          close();
+          if (item.path === '/products' && onProductsClick) {
+            e.preventDefault();
+            onProductsClick();
+          }
+        }}
         className={`relative flex items-center gap-3 rounded-lg transition-all duration-150 group px-3 py-2.5
           ${active
             ? 'bg-brand-light text-brand font-semibold'
@@ -89,20 +97,26 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
     <>
       {/* ── Mobile top bar ─────────────────────────────────── */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 h-14 bg-sidebarbg border-b border-border-subtle">
-        <div className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5 cursor-pointer">
           <div className="h-7 w-7 rounded-lg bg-brand flex items-center justify-center shrink-0">
             <Zap className="h-4 w-4 text-white fill-none stroke-current" />
           </div>
           <span className="font-bold text-text-primary text-sm tracking-tight leading-none">
             Electric Inventory
           </span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-2">
           {lowStockCount > 0 && (
             <Link
               to="/products"
-              onClick={close}
+              onClick={(e) => {
+                close();
+                if (onLowStockClick) {
+                  e.preventDefault();
+                  onLowStockClick();
+                }
+              }}
               className="flex items-center gap-1 bg-warning-light text-warning-primary px-2 py-1 rounded-full text-[10px] font-bold border border-warning-primary/20"
             >
               <AlertTriangle className="h-3 w-3" />
@@ -129,12 +143,16 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
             className="absolute left-0 top-0 bottom-0 w-64 bg-sidebarbg border-r border-border-subtle flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-2.5 px-5 h-14 border-b border-border-subtle shrink-0">
+            <Link
+              to="/"
+              onClick={close}
+              className="flex items-center gap-2.5 px-5 h-14 border-b border-border-subtle shrink-0 cursor-pointer"
+            >
               <div className="h-7 w-7 rounded-lg bg-brand flex items-center justify-center shrink-0">
                 <Zap className="h-4 w-4 text-white fill-none stroke-current" />
               </div>
               <span className="font-bold text-text-primary text-sm tracking-tight">Electric Inventory</span>
-            </div>
+            </Link>
 
             <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-0.5">
               {navigationItems.map((item) => (
@@ -152,7 +170,7 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
       {/* ── Desktop sidebar ────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-56 bg-sidebarbg border-r border-border-subtle sticky top-0 h-screen shrink-0">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 h-14 border-b border-border-subtle shrink-0">
+        <Link to="/" className="flex items-center gap-2.5 px-5 h-14 border-b border-border-subtle shrink-0 cursor-pointer">
           <div className="h-7 w-7 rounded-lg bg-brand flex items-center justify-center shrink-0">
             <Zap className="h-4 w-4 text-white fill-none stroke-current" />
           </div>
@@ -161,7 +179,7 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
               Electric Inventory
             </p>
           </div>
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-0.5 scrollbar-hidden">
@@ -179,6 +197,12 @@ export default function Navbar({ lowStockCount, sessionUser }: NavbarProps) {
             </div>
             <Link
               to="/products"
+              onClick={(e) => {
+                if (onLowStockClick) {
+                  e.preventDefault();
+                  onLowStockClick();
+                }
+              }}
               className="flex items-center justify-center gap-1 w-full py-1 rounded-md bg-warning-primary text-white text-[10px] font-bold hover:brightness-105 transition-all"
             >
               <span>Review</span>

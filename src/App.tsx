@@ -66,6 +66,11 @@ export default function App() {
     navigate('/products');
   };
 
+  const handleProductsLinkClick = () => {
+    setProductsListFilter('all');
+    navigate('/products');
+  };
+
   const handleCreateOrUpdateProduct = async (payload: Omit<Product, 'id' | 'updated_at'> & { id?: string }) => {
     if (payload.id) {
       const existing = products.find(p => p.id === payload.id);
@@ -136,6 +141,8 @@ export default function App() {
       <Navbar
         lowStockCount={lowStockCount}
         sessionUser={sessionUser}
+        onLowStockClick={handleLowStockFilterClick}
+        onProductsClick={handleProductsLinkClick}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-y-auto max-w-6xl mx-auto w-full">
@@ -150,7 +157,12 @@ export default function App() {
               <Dashboard
                 products={products}
                 logs={logs}
-                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
+                onViewChange={(view) => {
+                  if (view === 'products') {
+                    setProductsListFilter('all');
+                  }
+                  navigate(view === 'dashboard' ? '/' : `/${view}`);
+                }}
                 onFilterLowStock={handleLowStockFilterClick}
                 onFilterOutOfStock={handleOutOfStockFilterClick}
               />
