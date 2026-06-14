@@ -119,6 +119,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
             finalUrl = finalUrl.replace('/upload/', '/upload/f_auto,q_auto,c_limit,w_1200/');
           }
           setImageUrl(finalUrl);
+          setUploading(false);
           setFeedback({ type: 'success', text: 'Image uploaded successfully!' });
         } else {
           throw new Error("Upload failed");
@@ -367,7 +368,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                   : 'border-border-subtle bg-pagebg hover:bg-brand-light/10'
               }`}
             >
-              <input id="file-image-picker" type="file" accept="image/*" capture="environment" onChange={handleFileInput} className="hidden" />
+              <input id="file-image-picker" type="file" accept="image/*" onChange={handleFileInput} className="hidden" />
               <label htmlFor="file-image-picker" className="cursor-pointer flex flex-col items-center space-y-1.5">
                 <Upload className="h-5 w-5 text-brand" />
                 <p className="text-xs font-medium text-text-primary">
