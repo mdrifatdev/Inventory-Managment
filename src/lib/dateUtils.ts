@@ -1,3 +1,5 @@
+/** তারিখ ফরম্যাটিং হেল্পার | Date formatting & grouping utilities for history views */
+
 export function formatDateTime(dateString: string) {
   const date = new Date(dateString);
   

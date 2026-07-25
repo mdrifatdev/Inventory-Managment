@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/** স্টক মডাল | Stock in/out adjustment modal with quick-add buttons */
+import { useState, useEffect } from 'react';
 import { Plus, Minus, X, AlertTriangle } from 'lucide-react';
 import { Product } from '../types';
 

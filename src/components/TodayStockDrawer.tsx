@@ -1,4 +1,4 @@
-import React from 'react';
+/** আজকের স্টক ড্রয়ার | Today's stock in/out log drawer */
 import { X, ArrowUpRight, ArrowDownRight, History as HistoryIcon } from 'lucide-react';
 import { InventoryLog } from '../types';
 import { formatDateTime } from '../lib/dateUtils';

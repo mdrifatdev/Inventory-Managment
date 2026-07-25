@@ -1,22 +1,17 @@
-import React, { useState, useEffect } from 'react';
+/** প্রোডাক্ট লিস্ট পেজ | Product list — search, filter, sort, CSV export, stock adjustment */
+import { useState, useEffect, type MouseEvent } from 'react';
 import {
   Search,
   Trash2,
-  Edit3,
-  Plus,
-  Minus,
-  AlertTriangle,
   Package,
   X,
-  History as HistoryIcon,
-  Maximize2,
-  Download
+  Download,
 } from 'lucide-react';
-import { Product, Category, InventoryLog } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { Product, Category, InventoryLog, ALL_CATEGORIES } from '../types';
 import StockModal from '../components/StockModal';
 import ProductHistoryDrawer from '../components/ProductHistoryDrawer';
 import { ProductCard } from '../components/ProductCard';
-import { formatDateTime } from '../lib/dateUtils';
 
 interface ProductsListProps {
   products: Product[];
@@ -28,23 +23,12 @@ interface ProductsListProps {
     id: string,
     newQty: number,
     actionType: 'addition' | 'reduction',
-    isUsedCustom?: boolean,
     customNotes?: string
   ) => void;
-  onViewChange: (view: string) => void;
 }
 
-const ALL_CATEGORIES: (Category | "All")[] = [
-  "All",
-  "Cables & Wiring",
-  "Switches & Sockets",
-  "Lighting & Bulbs",
-  "Circuit Breakers & Fuses",
-  "Fans & Ventilation",
-  "Power Tools",
-  "Testing Equipment",
-  "Other Accessories"
-];
+// ক্যাটাগরি ফিল্টার অপশন — "All" সহ | Category filter with "All" prepended
+const CATEGORY_FILTER_OPTIONS: (Category | "All")[] = ["All", ...ALL_CATEGORIES];
 
 type SortOption = 'name-asc' | 'name-desc' | 'date-desc' | 'qty-asc' | 'qty-desc';
 
@@ -64,14 +48,13 @@ export default function ProductsList({
   useEffect(() => {
     setStockStatusFilter(initialFilter);
   }, [initialFilter]);
-  
+
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // ──── CSV এক্সপোর্ট | CSV export (Web Share on native, download on web) ────
   const exportToCSV = () => {
-    // CSV Header row
     const headers = ['Product Name', 'SKU', 'Category', 'Condition', 'Quantity', 'Min Threshold', 'Brand', 'Added Date', 'Description'];
-    
-    // Map products to CSV rows
+
     const rows = products.map((p) => {
       const addedDate = p.addedAt ? new Date(p.addedAt).toLocaleDateString('en-GB') : 'N/A';
       return [
@@ -88,24 +71,29 @@ export default function ProductsList({
     });
 
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    
-    // Create Blob and trigger download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `electric_inventory_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const filename = `electric_inventory_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    if (Capacitor.isNativePlatform() && navigator.share) {
+      const file = new File([blob], filename, { type: 'text/csv' });
+      navigator.share({ files: [file] }).catch(() => {});
+    } else {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
   };
-  
-  // Modals state
+
+  // ──── মডাল স্টেট | Modal state ────
   const [stockModalConfig, setStockModalConfig] = useState<{ product: Product | null, mode: 'in' | 'out' }>({ product: null, mode: 'in' });
   const [historyDrawerProduct, setHistoryDrawerProduct] = useState<Product | null>(null);
-  const [largeImageModal, setLargeImageModal] = useState<string | null>(null);
 
-  // Filter
+  // ──── ফিল্টার ও সর্ট | Filter & sort ────
   let filtered = products.filter((p) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -122,7 +110,6 @@ export default function ProductsList({
     return true;
   });
 
-  // Sort
   filtered = [...filtered].sort((a, b) => {
     switch (sortBy) {
       case 'name-asc': return a.name.localeCompare(b.name);
@@ -134,30 +121,23 @@ export default function ProductsList({
     }
   });
 
-  const isLowStock = (p: Product) => p.quantity <= p.minThreshold && p.quantity > 0;
-  const isOutOfStock = (p: Product) => p.quantity === 0;
-
-  const handleStockInClick = (e: React.MouseEvent, p: Product) => {
+  // ──── ইভেন্ট হ্যান্ডলার | Event handlers ────
+  const handleStockInClick = (e: MouseEvent, p: Product) => {
     e.stopPropagation();
     setStockModalConfig({ product: p, mode: 'in' });
   };
 
-  const handleStockUsedClick = (e: React.MouseEvent, p: Product) => {
+  const handleStockUsedClick = (e: MouseEvent, p: Product) => {
     e.stopPropagation();
     setStockModalConfig({ product: p, mode: 'out' });
   };
 
-  const handleHistoryClick = (e: React.MouseEvent, p: Product) => {
+  const handleHistoryClick = (e: MouseEvent, p: Product) => {
     e.stopPropagation();
     setHistoryDrawerProduct(p);
   };
 
-  const handleImageClick = (e: React.MouseEvent, imageUrl: string) => {
-    e.stopPropagation();
-    setLargeImageModal(imageUrl);
-  };
-
-  const confirmDelete = (e: React.MouseEvent, id: string) => {
+  const confirmDelete = (e: MouseEvent, id: string) => {
     e.stopPropagation();
     setDeleteConfirm(id);
   };
@@ -174,20 +154,16 @@ export default function ProductsList({
     const p = stockModalConfig.product;
     const isAdding = stockModalConfig.mode === 'in';
     const newQty = isAdding ? p.quantity + amount : p.quantity - amount;
-    
-    let logNotes = '';
+
     const prefix = `Stock ${isAdding ? 'in' : 'used'}: ${isAdding ? '+' : '-'}${amount} units.`;
-    if (customNotes && customNotes.trim() !== '') {
-      logNotes = `${prefix} ${customNotes.trim()}`;
-    } else {
-      logNotes = prefix;
-    }
+    const logNotes = customNotes && customNotes.trim() !== ''
+      ? `${prefix} ${customNotes.trim()}`
+      : prefix;
 
     onUpdateQuantity(
-      p.id, 
-      newQty, 
-      isAdding ? 'addition' : 'reduction', 
-      p.isUsed, 
+      p.id,
+      newQty,
+      isAdding ? 'addition' : 'reduction',
       logNotes
     );
   };
@@ -195,7 +171,7 @@ export default function ProductsList({
   return (
     <div className="space-y-4 animate-fade-in pb-12">
 
-      {/* Header */}
+      {/* হেডার | Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-bold text-lg text-text-primary tracking-tight">Products</h2>
@@ -212,7 +188,7 @@ export default function ProductsList({
         )}
       </div>
 
-      {/* Search + Sort */}
+      {/* সার্চ ও সর্ট | Search + Sort */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
@@ -243,9 +219,9 @@ export default function ProductsList({
         </select>
       </div>
 
-      {/* Category pills */}
+      {/* ক্যাটাগরি পিল | Category pills */}
       <div className="flex overflow-x-auto gap-1.5 scrollbar-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-        {ALL_CATEGORIES.map((cat) => (
+        {CATEGORY_FILTER_OPTIONS.map((cat) => (
           <button
             key={cat}
             type="button"
@@ -261,7 +237,7 @@ export default function ProductsList({
         ))}
       </div>
 
-      {/* Stock status filters */}
+      {/* স্টক স্ট্যাটাস ফিল্টার | Stock status filters */}
       <div className="flex gap-1.5 w-full">
         {[
           { key: 'all' as const, label: 'All' },
@@ -305,13 +281,13 @@ export default function ProductsList({
         </div>
       )}
 
-      {/* Delete confirmation modal */}
+      {/* ডিলিট কনফার্মেশন | Delete confirmation modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-card rounded-2xl border border-border-subtle shadow-xl p-5 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-4 mb-5">
-              <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <Trash2 className="h-5 w-5 text-red-500" />
+              <div className="h-10 w-10 rounded-full bg-warning-light flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-warning-primary" />
               </div>
               <div className="pt-1">
                 <h3 className="text-base font-bold text-text-primary">Delete Product</h3>
@@ -327,7 +303,7 @@ export default function ProductsList({
               </button>
               <button
                 onClick={handleDeleteConfirmed}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-bold hover:bg-red-600 shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-warning-primary text-white text-sm font-bold hover:brightness-110 shadow-sm transition-all cursor-pointer"
               >
                 Delete
               </button>
@@ -336,28 +312,8 @@ export default function ProductsList({
         </div>
       )}
 
-      {/* Large Image Modal */}
-      {largeImageModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={() => setLargeImageModal(null)}>
-          <div className="relative max-w-4xl w-full flex items-center justify-center">
-            <button 
-              className="absolute -top-10 right-0 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-              onClick={() => setLargeImageModal(null)}
-            >
-              <X className="h-6 w-6" />
-            </button>
-            <img 
-              src={largeImageModal} 
-              alt="Full size view" 
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Stock Adjust Modal */}
-      <StockModal 
+      {/* স্টক অ্যাডজাস্ট মডাল | Stock adjustment modal */}
+      <StockModal
         product={stockModalConfig.product!}
         mode={stockModalConfig.mode}
         isOpen={!!stockModalConfig.product}
@@ -365,8 +321,8 @@ export default function ProductsList({
         onConfirm={handleStockConfirm}
       />
 
-      {/* History Drawer */}
-      <ProductHistoryDrawer 
+      {/* হিস্ট্রি ড্রয়ার | History drawer */}
+      <ProductHistoryDrawer
         product={historyDrawerProduct}
         logs={logs}
         isOpen={!!historyDrawerProduct}

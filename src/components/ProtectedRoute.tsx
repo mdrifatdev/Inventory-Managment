@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+/** প্রোটেক্টেড রুট | Auth guard — redirects to /auth if not logged in */
+import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from '@supabase/supabase-js';
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 

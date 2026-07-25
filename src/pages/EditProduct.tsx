@@ -1,4 +1,4 @@
-import React from 'react';
+/** প্রোডাক্ট এডিট পেজ | Edit existing product page */
 import ProductForm from '../components/ProductForm';
 import { Product } from '../types';
 
