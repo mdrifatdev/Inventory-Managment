@@ -1,23 +1,24 @@
-# Walkthrough - GitHub Action Build Failure Fix
+# Walkthrough - Fix Missing Debug Keystore in GitHub Actions
 
-The GitHub Action build was failing because the workflow in the repository root was using an outdated Java version (JDK 17) while the project requires JDK 21. This mismatch led to the error `invalid source release: 21`.
+The GitHub Action build was failing because the runner lacked a `debug.keystore` file to sign the debug APK. I have updated the workflow to handle this automatically.
 
 ## Changes Made
 
-### 1. Updated Root Workflow
-The file [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml) has been updated with the following improvements:
-- **JDK 21**: Switched the primary Java version to 21 to match the project's requirements.
-- **Node.js 22**: Updated Node.js to version 22 for better compatibility.
-- **Write Permissions**: Added `permissions: contents: write` to ensure the workflow can successfully create GitHub Releases and upload APKs.
-- **Gradle Caching**: Enabled caching for Gradle to speed up future build runs.
-- **Environment Fix**: Added `ANDROID_PREFS_ROOT: ""` to the build step to avoid the preference path conflict encountered during the build.
-- **Branch Triggers**: Added the current worktree branch to push triggers for immediate testing.
+### 1. Manual Keystore Generation
+I added a new step to the workflow: **"Generate Debug Keystore"**. This step:
+- Creates a `.android` directory in the runner's workspace.
+- Uses the `keytool` command to generate a standard Android debug keystore with the default password (`android`) and alias (`androiddebugkey`).
+
+### 2. Environment Configuration
+I updated the **"Build debug APK"** step:
+- **Set `ANDROID_USER_HOME`**: Points Gradle to `${{ github.workspace }}/.android` so it finds the newly generated keystore.
+- **Removed `ANDROID_PREFS_ROOT`**: Eliminated the conflicting variable that caused previous path resolution issues.
 
 ## How to Verify
 
-1.  **Commit & Push**: Push these changes to your GitHub repository.
-2.  **Monitor Build**: Open the **Actions** tab on GitHub and watch the "Build Android APK" workflow.
-3.  **Check Result**: Once finished, check that a new pre-release is created with the updated APK.
+1.  **Commit & Push**: Push the updated workflow to GitHub.
+2.  **Monitor Build**: Check the **Actions** tab. You should see the "Generate Debug Keystore" step run before the Gradle build.
+3.  **Check Result**: The build should now pass the `packageDebug` stage and generate the APK.
 
 > [!SUCCESS]
-> The workflow now correctly identifies the required Java version and environment variables, resolving the build failure.
+> By explicitly providing the signing material, we ensure the CI environment is fully self-sufficient and doesn't depend on pre-existing runner state.

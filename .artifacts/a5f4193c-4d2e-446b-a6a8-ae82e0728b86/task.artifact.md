@@ -1,2 +1,3 @@
 - [x] Update root .github/workflows/build-apk.yml
-- [x] Verify workflow structure
+- [x] Add Generate Debug Keystore step
+- [x] Set ANDROID_USER_HOME and remove ANDROID_PREFS_ROOT

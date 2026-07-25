@@ -1,6 +1,6 @@
-# Implementation Plan - Fix GitHub Action Build Failure
+# Implementation Plan - Fix Missing Debug Keystore in CI
 
-The GitHub Action build is failing with `error: invalid source release: 21` because the workflow in the repository root is still configured to use Java 17, while the project now requires Java 21 (due to SDK 36 and Capacitor requirements).
+The GitHub Action build is failing because it cannot find the `debug.keystore` file. This usually happens in CI environments where the default Android preferences directory hasn't been initialized or is pointing to an unexpected location.
 
 ## Proposed Changes
 
@@ -8,17 +8,23 @@ The GitHub Action build is failing with `error: invalid source release: 21` beca
 
 #### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
 
-Update the root workflow file with the following:
-- **Upgrade JDK**: Change `java-version` from `17` to `21`.
-- **Add Permissions**: Add `permissions: contents: write` to allow the release creation.
-- **Add Branch Trigger**: Include the worktree branch in triggers for testing if needed.
-- **Enable Caching**: Add Gradle caching for faster builds.
-- **Fix Preference Conflict**: Set `ANDROID_PREFS_ROOT: ""` in the build step.
-- **Update Node.js**: Bump to version `22` to match the local environment.
+1.  **Remove `ANDROID_PREFS_ROOT: ""`**: This variable might be causing Gradle to look in the project directory instead of the standard user home.
+2.  **Explicitly set `ANDROID_USER_HOME`**: Set it to a known writable location (`${{ github.workspace }}/.android`).
+3.  **Generate Debug Keystore**: Add a step to manually generate a `debug.keystore` if it doesn't exist. This ensures that the `packageDebug` task always has a valid keystore to sign the debug APK.
+
+```yaml
+      - name: Generate Debug Keystore
+        run: |
+          mkdir -p .android
+          keytool -genkey -v -keystore .android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+```
+
+4.  **Update Build Step**: Pass the `ANDROID_USER_HOME` to the Gradle build.
 
 ## Verification Plan
 
 ### Manual Verification
-- After applying the changes, the user should push to the `main` branch.
-- Verify the build succeeds in GitHub Actions.
-- Verify the APK is generated and attached to a new pre-release.
+- Push the changes to GitHub.
+- Verify that the "Generate Debug Keystore" step runs successfully.
+- Verify that the "Build debug APK" step completes without the "missing keystore" error.
+- Verify the APK is generated.
