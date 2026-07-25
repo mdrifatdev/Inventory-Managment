@@ -1,4 +1,5 @@
-import React from 'react';
+/** নেভিগেশন বার | Sidebar nav — responsive with mobile drawer */
+import { useState, type Key } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -31,7 +32,7 @@ const navigationItems = [
 ];
 
 export default function Navbar({ lowStockCount, sessionUser, onLowStockClick, onProductsClick }: NavbarProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const currentPath = location.pathname;
   const isOnline = useOnlineStatus();
@@ -43,7 +44,7 @@ export default function Navbar({ lowStockCount, sessionUser, onLowStockClick, on
 
   const close = () => setIsOpen(false);
 
-  const NavLink = ({ item }: { item: (typeof navigationItems)[0]; key?: React.Key }) => {
+  const NavLink = ({ item }: { item: (typeof navigationItems)[0]; key?: Key }) => {
     const active = isActive(item.path);
     const Icon = item.icon;
     const showBadge = item.path === '/products' && lowStockCount > 0;

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/** ড্যাশবোর্ড পেজ | Dashboard — stats overview, low stock alert, recent activity */
+import { useState } from 'react';
 import {
   Package,
   Boxes,
@@ -15,7 +16,6 @@ interface DashboardProps {
   logs: InventoryLog[];
   onViewChange: (view: string) => void;
   onFilterLowStock: () => void;
-  onFilterOutOfStock: () => void;
 }
 
 export default function Dashboard({
@@ -28,7 +28,6 @@ export default function Dashboard({
   const totalProducts = products.length;
   const totalStock = products.reduce((acc, p) => acc + p.quantity, 0);
 
-  // Today's stats from logs
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -51,11 +50,10 @@ export default function Dashboard({
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* ── 4 Stat Cards (2×2) ───────────────────────────────── */}
+      {/* ── ৪টি স্ট্যাট কার্ড | 4 Stat Cards (2×2) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
-        {/* Total Products */}
-        <div 
+        <div
           onClick={() => onViewChange('products')}
           className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/50 transition-all cursor-pointer"
         >
@@ -68,22 +66,20 @@ export default function Dashboard({
           <p className="text-2xl font-bold text-text-primary tracking-tight">{totalProducts}</p>
         </div>
 
-        {/* Total Stock */}
-        <div 
+        <div
           onClick={() => onViewChange('products')}
           className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-brand/50 transition-all cursor-pointer"
         >
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Total Stock</span>
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+            <div className="h-8 w-8 rounded-lg bg-brand-light flex items-center justify-center text-brand">
               <Boxes className="h-4 w-4" />
             </div>
           </div>
           <p className="text-2xl font-bold text-text-primary tracking-tight">{totalStock.toLocaleString()}</p>
         </div>
 
-        {/* Stock In Today */}
-        <div 
+        <div
           onClick={() => setActiveTodayDrawerType('addition')}
           className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-success/50 transition-all cursor-pointer"
         >
@@ -96,8 +92,7 @@ export default function Dashboard({
           <p className="text-2xl font-bold text-success tracking-tight">+{stockInToday}</p>
         </div>
 
-        {/* Stock Used Today */}
-        <div 
+        <div
           onClick={() => setActiveTodayDrawerType('reduction')}
           className="bg-card border border-border-subtle rounded-xl p-5 flex flex-col justify-between group hover:border-warning-primary/50 transition-all cursor-pointer"
         >
@@ -112,7 +107,7 @@ export default function Dashboard({
 
       </div>
 
-      {/* ── Low Stock Alert ─────────────────────────────────── */}
+      {/* ── লো স্টক সতর্কতা | Low Stock Alert ── */}
       {lowStockProducts.length > 0 && (
         <div
           onClick={onFilterLowStock}
@@ -131,7 +126,7 @@ export default function Dashboard({
         </div>
       )}
 
-      {/* ── Recent Activity ─────────────────────────────────── */}
+      {/* ── সাম্প্রতিক কার্যকলাপ | Recent Activity ── */}
       <div className="bg-card border border-border-subtle rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle">
           <div className="flex items-center gap-2">
@@ -178,7 +173,8 @@ export default function Dashboard({
           )}
         </div>
       </div>
-      <TodayStockDrawer 
+
+      <TodayStockDrawer
         isOpen={activeTodayDrawerType !== null}
         onClose={() => setActiveTodayDrawerType(null)}
         logs={logs}

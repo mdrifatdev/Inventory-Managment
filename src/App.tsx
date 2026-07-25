@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * মূল অ্যাপ কম্পোনেন্ট | Root app — routing, auth state, and product CRUD orchestration
+ */
+import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -22,6 +25,7 @@ export default function App() {
 
   const { products, logs, loading, addProduct, updateProduct, deleteProduct } = useProducts();
 
+  // ──── ডার্ক মোড | Dark mode toggle ────
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('theme_preference');
     if (saved) return saved === 'dark';
@@ -37,6 +41,7 @@ export default function App() {
     localStorage.setItem('theme_preference', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // ──── অথ সেশন | Auth session tracking ────
   const [sessionUser, setSessionUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {
@@ -58,13 +63,9 @@ export default function App() {
     }
   }, []);
 
+  // ──── নেভিগেশন হ্যান্ডলার | Navigation filter handlers ────
   const handleLowStockFilterClick = () => {
     setProductsListFilter('low-stock');
-    navigate('/products');
-  };
-
-  const handleOutOfStockFilterClick = () => {
-    setProductsListFilter('out-of-stock');
     navigate('/products');
   };
 
@@ -73,6 +74,7 @@ export default function App() {
     navigate('/products');
   };
 
+  // ──── প্রোডাক্ট CRUD হ্যান্ডলার | Product CRUD handlers ────
   const handleCreateOrUpdateProduct = async (payload: Omit<Product, 'id' | 'updated_at'> & { id?: string }) => {
     if (payload.id) {
       const existing = products.find(p => p.id === payload.id);
@@ -103,7 +105,6 @@ export default function App() {
     id: string,
     newQty: number,
     logType: 'addition' | 'reduction',
-    isUsedCustom?: boolean,
     customNotes?: string
   ) => {
     const original = products.find(p => p.id === id);
@@ -138,6 +139,7 @@ export default function App() {
 
   const lowStockCount = products.filter(p => p.quantity <= p.minThreshold && p.quantity > 0).length;
 
+  // ──── রাউটিং | Route definitions ────
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-pagebg text-text-primary font-sans antialiased">
       <Navbar
@@ -166,7 +168,6 @@ export default function App() {
                   navigate(view === 'dashboard' ? '/' : `/${view}`);
                 }}
                 onFilterLowStock={handleLowStockFilterClick}
-                onFilterOutOfStock={handleOutOfStockFilterClick}
               />
             } />
 
@@ -178,7 +179,6 @@ export default function App() {
                 onEdit={handleEditClick}
                 onDelete={handleDeleteProduct}
                 onUpdateQuantity={handleUpdateProductQuantityOnly}
-                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
               />
             } />
 
@@ -212,8 +212,6 @@ export default function App() {
             <Route path="/auth" element={
               <AuthPanel
                 sessionUser={sessionUser}
-                isOfflineModeEnabled={false}
-                onViewChange={(view) => navigate(view === 'dashboard' ? '/' : `/${view}`)}
                 isDarkMode={isDarkMode}
                 onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
               />

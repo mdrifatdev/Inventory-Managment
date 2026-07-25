@@ -1,7 +1,13 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Product, Settings, InventoryLog } from '../types';
+/**
+ * সুপাবেস ক্লায়েন্ট ও লোকাল স্টোরেজ | Supabase client + localStorage fallback layer
+ * অনলাইন থাকলে Supabase ব্যবহার করে, অফলাইনে localStorage এ ফলব্যাক করে
+ */
 
-// Default initial products as high-quality seed data
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Product, Settings, InventoryLog, FALLBACK_IMAGE } from '../types';
+
+// ──── সিড ডেটা | Default seed data for first-time users ────
+
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: "prod-1",
@@ -10,7 +16,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: "Cables & Wiring",
     quantity: 120,
     minThreshold: 30,
-    image_url: "https://images.unsplash.com/photo-1558449028-b53a39d100fc?w=600&auto=format&fit=crop&q=80",
+    image_url: FALLBACK_IMAGE,
     brand: "SuperFlex Cables",
     description: "Flame-retardant 2.5sqmm copper cables suitable for domestic wiring applications.",
     updated_at: new Date().toISOString(),
@@ -23,8 +29,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     sku: "SW-M3-DIM-01",
     category: "Switches & Sockets",
     quantity: 15,
-    minThreshold: 20, // Should trigger warning
-    image_url: "https://images.unsplash.com/photo-1595183864453-e5d7df9d9df3?w=600&auto=format&fit=crop&q=80",
+    minThreshold: 20,
+    image_url: FALLBACK_IMAGE,
     brand: "LumenHome",
     description: "Modern touch-sensitive dimmer with smart home assistant integration.",
     updated_at: new Date().toISOString(),
@@ -38,7 +44,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: "Lighting & Bulbs",
     quantity: 85,
     minThreshold: 15,
-    image_url: "https://images.unsplash.com/photo-1550985616-10810253b84d?w=600&auto=format&fit=crop&q=80",
+    image_url: FALLBACK_IMAGE,
     brand: "AuraLight",
     description: "Energy efficient Cool White LED bulbs with 25,000 hour lifetime.",
     updated_at: new Date().toISOString(),
@@ -52,8 +58,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     sku: "CB-MCB-32A-DP",
     category: "Circuit Breakers & Fuses",
     quantity: 8,
-    minThreshold: 10, // Should trigger warning
-    image_url: "https://images.unsplash.com/photo-1621259182978-f09e5e2ab09a?w=600&auto=format&fit=crop&q=80",
+    minThreshold: 10,
+    image_url: FALLBACK_IMAGE,
     brand: "SafeVolt",
     description: "Heavy duty short-circuit and overload protector for modern switchboards.",
     updated_at: new Date().toISOString(),
@@ -67,7 +73,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: "Fans & Ventilation",
     quantity: 45,
     minThreshold: 12,
-    image_url: "https://images.unsplash.com/photo-1618944847828-82e943c3dba7?w=600&auto=format&fit=crop&q=80",
+    image_url: FALLBACK_IMAGE,
     brand: "WindFlow",
     description: "Whisper-quiet powerful ventilation fan with rust-proof ABS shutters.",
     updated_at: new Date().toISOString(),
@@ -98,10 +104,13 @@ export const INITIAL_LOGS: InventoryLog[] = [
   }
 ];
 
-// LocalStorage Keys
+// ──── লোকালস্টোরেজ কী | Storage keys ────
+
 const SETTINGS_KEY = "eim_settings";
 const PRODUCTS_KEY = "eim_products";
 const LOGS_KEY = "eim_logs";
+
+// ──── সেটিংস ম্যানেজমেন্ট | Settings load/save ────
 
 export function loadSettings(): Settings {
   let savedSettings: Partial<Settings> = {};
@@ -114,22 +123,19 @@ export function loadSettings(): Settings {
     console.error("Failed to load settings", e);
   }
   return {
-    supabaseUrl: savedSettings.supabaseUrl || ((import.meta as any).env.VITE_SUPABASE_URL || "").trim(),
-    supabaseAnonKey: savedSettings.supabaseAnonKey || ((import.meta as any).env.VITE_SUPABASE_ANON_KEY || "").trim(),
-    cloudinaryCloudName: savedSettings.cloudinaryCloudName || ((import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME || "").trim(),
-    cloudinaryUploadPreset: savedSettings.cloudinaryUploadPreset || ((import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET || "").trim(),
+    supabaseUrl: savedSettings.supabaseUrl || (import.meta.env.VITE_SUPABASE_URL || "").trim(),
+    supabaseAnonKey: savedSettings.supabaseAnonKey || (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim(),
+    cloudinaryCloudName: savedSettings.cloudinaryCloudName || (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "").trim(),
+    cloudinaryUploadPreset: savedSettings.cloudinaryUploadPreset || (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "").trim(),
   };
 }
 
-export function saveSettings(settings: Settings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-}
+// ──── সুপাবেস ক্লায়েন্ট | Supabase client singleton ────
 
 let cachedClient: SupabaseClient | null = null;
 let lastUrl = '';
 let lastAnonKey = '';
 
-// Check if credentials are valid and cache client to support Supabase Auth sessions properly
 export function getSupabaseClient(): SupabaseClient | null {
   if (localStorage.getItem('force_offline') === 'true') {
     cachedClient = null;
@@ -154,7 +160,7 @@ export function getSupabaseClient(): SupabaseClient | null {
   return null;
 }
 
-// --- Dynamic inventory handling functions (Supabase first with local fallback) ---
+// ──── প্রোডাক্ট CRUD | Product operations (Supabase-first, localStorage fallback) ────
 
 export async function fetchProducts(): Promise<Product[]> {
   const supabase = getSupabaseClient();
@@ -164,9 +170,8 @@ export async function fetchProducts(): Promise<Product[]> {
         .from('products')
         .select('*')
         .order('name', { ascending: true });
-      
+
       if (!error && data) {
-        // Cache in localStorage too
         localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
         return data as Product[];
       }
@@ -176,13 +181,11 @@ export async function fetchProducts(): Promise<Product[]> {
     }
   }
 
-  // Fallback to localStorage
   const local = localStorage.getItem(PRODUCTS_KEY);
   if (local) {
     return JSON.parse(local);
   }
-  
-  // Seed initial data
+
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
   return INITIAL_PRODUCTS;
 }
@@ -202,9 +205,9 @@ export async function insertProduct(product: Omit<Product, 'id' | 'updated_at'>)
         .insert([newProduct])
         .select()
         .single();
-      
+
       if (!error && data) {
-        await syncLocalProducts(data as Product);
+        syncLocalProducts(data as Product);
         return data as Product;
       }
       console.error("Supabase insert failed, adding locally", error);
@@ -213,8 +216,7 @@ export async function insertProduct(product: Omit<Product, 'id' | 'updated_at'>)
     }
   }
 
-  // Fallback: Local operation
-  await syncLocalProducts(newProduct);
+  syncLocalProducts(newProduct);
   return newProduct;
 }
 
@@ -233,9 +235,9 @@ export async function updateProductInDB(product: Product): Promise<Product> {
         .eq('id', product.id)
         .select()
         .single();
-      
+
       if (!error && data) {
-        await updateLocalProduct(data as Product);
+        updateLocalProduct(data as Product);
         return data as Product;
       }
       console.error("Supabase update failed, updating locally", error);
@@ -244,8 +246,7 @@ export async function updateProductInDB(product: Product): Promise<Product> {
     }
   }
 
-  // Fallback: Local operation
-  await updateLocalProduct(updatedProduct);
+  updateLocalProduct(updatedProduct);
   return updatedProduct;
 }
 
@@ -259,7 +260,7 @@ export async function deleteProductFromDB(id: string): Promise<boolean> {
         .from('products')
         .delete()
         .eq('id', id);
-      
+
       if (!error) {
         success = true;
       } else {
@@ -270,7 +271,6 @@ export async function deleteProductFromDB(id: string): Promise<boolean> {
     }
   }
 
-  // Always keep localStorage in sync
   const local = localStorage.getItem(PRODUCTS_KEY);
   if (local) {
     const products: Product[] = JSON.parse(local);
@@ -281,7 +281,8 @@ export async function deleteProductFromDB(id: string): Promise<boolean> {
   return success;
 }
 
-// Log actions
+// ──── লগ অপারেশন | Inventory log operations ────
+
 export async function fetchLogs(): Promise<InventoryLog[]> {
   const supabase = getSupabaseClient();
   if (supabase) {
@@ -290,7 +291,7 @@ export async function fetchLogs(): Promise<InventoryLog[]> {
         .from('inventory_logs')
         .select('*')
         .order('timestamp', { ascending: false });
-      
+
       if (!error && data) {
         localStorage.setItem(LOGS_KEY, JSON.stringify(data));
         return data as InventoryLog[];
@@ -327,9 +328,9 @@ export async function addInventoryLog(productId: string, productName: string, ty
         .insert([newLog])
         .select()
         .single();
-      
+
       if (!error && data) {
-        await saveLocalLog(data as InventoryLog);
+        saveLocalLog(data as InventoryLog);
         return data as InventoryLog;
       }
     } catch (e) {
@@ -337,19 +338,20 @@ export async function addInventoryLog(productId: string, productName: string, ty
     }
   }
 
-  await saveLocalLog(newLog);
+  saveLocalLog(newLog);
   return newLog;
 }
 
-// Internal Local Storage Synchronizers
-async function syncLocalProducts(p: Product) {
+// ──── লোকাল সিঙ্ক হেল্পার | localStorage sync helpers (synchronous) ────
+
+function syncLocalProducts(p: Product) {
   const local = localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
   const products: Product[] = JSON.parse(local);
   products.unshift(p);
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
 }
 
-async function updateLocalProduct(p: Product) {
+function updateLocalProduct(p: Product) {
   const local = localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
   const products: Product[] = JSON.parse(local);
   const index = products.findIndex(item => item.id === p.id);
@@ -361,7 +363,7 @@ async function updateLocalProduct(p: Product) {
   localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
 }
 
-async function saveLocalLog(log: InventoryLog) {
+function saveLocalLog(log: InventoryLog) {
   const local = localStorage.getItem(LOGS_KEY) || JSON.stringify(INITIAL_LOGS);
   const logs: InventoryLog[] = JSON.parse(local);
   logs.unshift(log);

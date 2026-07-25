@@ -1,6 +1,6 @@
-import React from 'react';
+/** প্রোডাক্ট হিস্ট্রি ড্রয়ার | Slide-out drawer showing a single product's stock history */
 import { X, ArrowUpRight, ArrowDownRight, History as HistoryIcon } from 'lucide-react';
-import { Product, InventoryLog } from '../types';
+import { Product, InventoryLog, FALLBACK_IMAGE } from '../types';
 import { formatDateTime, groupByDate } from '../lib/dateUtils';
 
 interface ProductHistoryDrawerProps {
@@ -45,11 +45,11 @@ export default function ProductHistoryDrawer({ product, logs, isOpen, onClose }:
           
           <div className="flex items-center gap-3">
             <img 
-              src={product.image_url || 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=100&auto=format&fit=crop&q=60'} 
-              alt={product.name} 
+              src={product.image_url || FALLBACK_IMAGE}
+              alt={product.name}
               className="h-10 w-10 rounded-lg object-cover border border-border-subtle shrink-0"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=100&auto=format&fit=crop&q=60';
+                (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
               }}
             />
             <div className="min-w-0">

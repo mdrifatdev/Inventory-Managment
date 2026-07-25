@@ -125,32 +125,10 @@
 }
 
 /* =============================================
-   Sidebar nav item active pill accent
-   ============================================= */
-.nav-item-active {
-  background-color: var(--color-brand-light);
-  color: var(--color-brand);
-}
-.nav-item-active .nav-icon {
-  color: var(--color-brand);
-}
-
-/* =============================================
    Utility: hide scrollbars
    ============================================= */
 .scrollbar-hidden::-webkit-scrollbar { display: none; }
 .scrollbar-hidden {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* =============================================
-   Toggle switch
-   ============================================= */
-.toggle-track {
-  background-color: var(--color-border-accent);
-  transition: background-color 0.2s ease;
-}
-.toggle-track[data-on="true"] {
-  background-color: var(--color-brand);
 }

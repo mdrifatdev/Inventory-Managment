@@ -1,4 +1,4 @@
-import React from 'react';
+/** স্ট্যাটাস ব্যাজ | Stock status badge — out of stock, low stock, pending sync */
 import { AlertTriangle, CloudLightning } from 'lucide-react';
 
 interface StatusBadgeProps {

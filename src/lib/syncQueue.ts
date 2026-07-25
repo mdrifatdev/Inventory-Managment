@@ -1,3 +1,8 @@
+/**
+ * অফলাইন সিঙ্ক কিউ | Offline operation queue
+ * অফলাইনে করা সব পরিবর্তন কিউতে জমা রাখে, অনলাইন হলে Supabase এ পাঠায়
+ */
+
 import { Product, InventoryLog } from '../types';
 import { getSupabaseClient } from './supabaseClient';
 
