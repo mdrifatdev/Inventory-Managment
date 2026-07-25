@@ -1,28 +1,35 @@
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { Network } from '@capacitor/network';
 
-/**
- * Custom React Hook that tracks the browser's current online/offline status
- * using the HTML5 navigator.onLine API.
- */
 export function useOnlineStatus(): boolean {
-  const [isOnline, setIsOnline] = useState<boolean>(() => 
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState<boolean>(true);
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    if (Capacitor.isNativePlatform()) {
+      Network.getStatus().then(status => setIsOnline(status.connected));
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+      const handler = Network.addListener('networkStatusChange', status => {
+        setIsOnline(status.connected);
+      });
 
-    // Sync state in case it changed between initial render and effect mount
-    setIsOnline(navigator.onLine);
+      return () => {
+        handler.then(h => h.remove());
+      };
+    } else {
+      setIsOnline(navigator.onLine);
 
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
   }, []);
 
   return isOnline;
