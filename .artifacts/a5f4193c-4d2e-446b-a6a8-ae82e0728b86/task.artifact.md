@@ -1,3 +1,2 @@
-- [x] Update build-apk.yml with JDK 21, branch triggers, and permissions
-- [x] Add Gradle caching to the workflow
-- [x] Verify workflow syntax (dry run or lint)
+- [x] Update root .github/workflows/build-apk.yml
+- [x] Verify workflow structure

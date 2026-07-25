@@ -1,26 +1,24 @@
-# Implementation Plan - Fix GitHub Action for Auto Build
+# Implementation Plan - Fix GitHub Action Build Failure
 
-The goal is to fix the GitHub Action workflow for building the Android APK. Based on the local build success and common CI issues, several improvements are needed.
+The GitHub Action build is failing with `error: invalid source release: 21` because the workflow in the repository root is still configured to use Java 17, while the project now requires Java 21 (due to SDK 36 and Capacitor requirements).
 
 ## Proposed Changes
 
-### [Component Name]
+### [GitHub Actions]
 
-#### [MODIFY] [build-apk.yml](file:///H:/inventory/Inventory-Managment/.claude/worktrees/ecstatic-swirles-b0e7e4/.github/workflows/build-apk.yml)
+#### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
 
-- **Update JDK Version**: Change Java version from `17` to `21` to match the local environment and modern Android requirements (SDK 36).
-- **Add Branch Trigger**: Include the current working branch `claude/ecstatic-swirles-b0e7e4` in the push triggers so the build runs on this branch.
-- **Add Permissions**: Explicitly add `permissions: contents: write` to allow the workflow to create a GitHub Release and upload the APK.
-- **Add Gradle Caching**: Enable caching in `actions/setup-java` to speed up builds.
-- **Set ANDROID_HOME**: Explicitly set the `ANDROID_HOME` and `ANDROID_SDK_ROOT` if needed, although `setup-android` usually handles this.
-- **Release Body**: Improve the release body to include more context.
+Update the root workflow file with the following:
+- **Upgrade JDK**: Change `java-version` from `17` to `21`.
+- **Add Permissions**: Add `permissions: contents: write` to allow the release creation.
+- **Add Branch Trigger**: Include the worktree branch in triggers for testing if needed.
+- **Enable Caching**: Add Gradle caching for faster builds.
+- **Fix Preference Conflict**: Set `ANDROID_PREFS_ROOT: ""` in the build step.
+- **Update Node.js**: Bump to version `22` to match the local environment.
 
 ## Verification Plan
 
 ### Manual Verification
-- The user must push the changes to the `claude/ecstatic-swirles-b0e7e4` branch on GitHub.
-- Observe the "Build Android APK" workflow in the GitHub Actions tab.
-- Verify that:
-  - The build succeeds.
-  - An artifact named `inventory-manager-debug` is uploaded.
-  - A pre-release is created with the APK attached.
+- After applying the changes, the user should push to the `main` branch.
+- Verify the build succeeds in GitHub Actions.
+- Verify the APK is generated and attached to a new pre-release.
