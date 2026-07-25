@@ -2,8 +2,13 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - claude/ecstatic-swirles-b0e7e4
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -13,6 +18,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,7 +31,8 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
+          cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -33,7 +41,7 @@ jobs:
         run: npm ci
 
       - name: Build web assets
-        run: npx vite build
+        run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -46,9 +54,16 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Generate Debug Keystore
+        run: |
+          mkdir -p .android
+          keytool -genkey -v -keystore .android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+        env:
+          ANDROID_USER_HOME: ${{ github.workspace }}/.android
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
