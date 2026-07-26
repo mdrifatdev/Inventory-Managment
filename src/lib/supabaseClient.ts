@@ -142,14 +142,32 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
   const { supabaseUrl, supabaseAnonKey } = loadSettings();
-  if (supabaseUrl && supabaseAnonKey && supabaseUrl.trim() !== "" && supabaseAnonKey.trim() !== "") {
-    if (cachedClient && lastUrl === supabaseUrl && lastAnonKey === supabaseAnonKey) {
+
+  // Clean up URL and key
+  const cleanUrl = (supabaseUrl || "").trim().replace(/\/$/, "");
+  const cleanKey = (supabaseAnonKey || "").trim();
+
+  // Validate that they are actual values and not placeholders
+  const isValid = cleanUrl && cleanKey &&
+                 !cleanUrl.includes("YOUR_") &&
+                 !cleanKey.includes("YOUR_") &&
+                 cleanUrl.startsWith("http");
+
+  if (isValid) {
+    if (cachedClient && lastUrl === cleanUrl && lastAnonKey === cleanKey) {
       return cachedClient;
     }
     try {
-      cachedClient = createClient(supabaseUrl, supabaseAnonKey);
-      lastUrl = supabaseUrl;
-      lastAnonKey = supabaseAnonKey;
+      cachedClient = createClient(cleanUrl, cleanKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage
+        }
+      });
+      lastUrl = cleanUrl;
+      lastAnonKey = cleanKey;
       return cachedClient;
     } catch (e) {
       console.error("Error creating Supabase client", e);

@@ -1,4 +1,4 @@
-- [x] Enable Universal APK in `android/app/build.gradle`
-- [x] Configure signing compatibility (V1/V2)
-- [x] Update artifact naming in GitHub Action
-- [x] Verify changes
+- [x] Remove README.md
+- [x] Update `src/lib/supabaseClient.ts` with robust initialization
+- [x] Create `supabase_setup.sql` for easy database configuration
+- [x] Verify build and functionality

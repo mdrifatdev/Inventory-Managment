@@ -1,24 +1,34 @@
-# Implementation Plan - Fix Invalid Package Error
+# Implementation Plan - Fix Supabase Common Issues & Cleanup
 
-The "package appears to be invalid" error usually occurs when the APK's architecture doesn't match the device or when there's a signing compatibility issue.
+The goal is to fix common Supabase integration issues (specifically for Capacitor/Mobile environments) and perform requested cleanup.
 
 ## Proposed Changes
 
-### Android Build Configuration
+### [Cleanup]
 
-#### [MODIFY] [android/app/build.gradle](file:///H:/inventory/Inventory-Managment/.claude/worktrees/ecstatic-swirles-b0e7e4/android/app/build.gradle)
-- **Enable Universal APK**: Set `universalApk true`. This will generate an `app-universal-release.apk` that works on all devices (arm64, armv7, etc.), eliminating the "invalid package" error caused by architecture mismatch.
-- **Explicit Signing Compatibility**: Ensure `v1SigningEnabled` and `v2SigningEnabled` are active in the signing configuration to support a wider range of Android versions.
+#### [DELETE] [README.md](file:///H:/inventory/Inventory-Managment/README.md)
+- Successfully removed as requested.
 
-### CI/CD Workflow
+### [Supabase Integration]
 
-#### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- Update the artifact path to specifically highlight the **Universal APK**, as that is the one most users should install.
+#### [MODIFY] [src/lib/supabaseClient.ts](file:///H:/inventory/Inventory-Managment/src/lib/supabaseClient.ts)
+- **Robust Client Initialization**:
+  - Add URL cleaning (trimming whitespace and removing trailing slashes).
+  - Explicitly configure Auth to persist sessions and auto-refresh tokens, which is critical for Capacitor apps.
+  - Add checks to prevent creating a client with placeholder values (like "YOUR_URL").
+- **Error Handling**: Improve console logging to be more descriptive of the failure reason.
+
+#### [NEW] [supabase_setup.sql](file:///H:/inventory/Inventory-Managment/supabase_setup.sql)
+- Provide a ready-to-run SQL script for the Supabase SQL Editor.
+- This resolves the most common "issue" where tables or RLS policies are missing.
+- Includes tables for `products` and `inventory_logs` with correct types and basic RLS.
 
 ## Verification Plan
 
+### Automated Verification
+- Verify that the app still compiles using `npm run lint`.
+- Verify that `README.md` is gone.
+
 ### Manual Verification
-1.  Push the changes to GitHub.
-2.  Wait for the GitHub Action to finish.
-3.  Download the **`app-universal-release.apk`** from the GitHub Release.
-4.  Verify that it installs correctly on your device.
+- Check the console logs in the browser to ensure no "invalid URL" errors are thrown during initialization.
+- Verify that the app still falls back to LocalStorage when Supabase is not configured.
