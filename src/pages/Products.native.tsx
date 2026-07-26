@@ -1,29 +1,56 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Search, X, Filter, Download } from 'lucide-react-native';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { Product, Category, ALL_CATEGORIES } from '../types';
 import { ProductCardNative } from '../components/ProductCard.native';
+import StockModalNative from '../components/StockModal.native';
+import ProductHistoryDrawerNative from '../components/ProductHistoryDrawer.native';
 
 interface ProductsListProps {
   products: Product[];
+  logs?: any[];
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
-  onUpdateQuantity: (id: string, newQty: number, type: 'addition' | 'reduction') => void;
-  onShowHistory: (product: Product) => void;
+  onUpdateQuantity: (id: string, newQty: number, type: 'addition' | 'reduction', notes?: string) => void;
 }
 
 const CATEGORIES: (Category | 'All')[] = ['All', ...ALL_CATEGORIES];
 
 export default function ProductsNative({
   products,
+  logs = [],
   onEdit,
   onDelete,
   onUpdateQuantity,
-  onShowHistory,
 }: ProductsListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [stockFilter, setStockStatus] = useState<'all' | 'low' | 'out'>('all');
+
+  // Modal States
+  const [stockModal, setStockModal] = useState<{ product: Product | null, mode: 'in' | 'out' }>({ product: null, mode: 'in' });
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+
+  const exportToCSV = async () => {
+    if (products.length === 0) return;
+
+    const headers = ['Product Name', 'SKU', 'Category', 'Quantity', 'Min Threshold', 'Added Date'];
+    const rows = products.map((p) => [
+      `"${p.name}"`, `"${p.sku}"`, `"${p.category}"`, p.quantity, p.minThreshold, `"${new Date(p.addedAt).toLocaleDateString()}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const fileUri = FileSystem.documentDirectory + 'inventory_export.csv';
+
+    try {
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri);
+    } catch (e) {
+      Alert.alert('Export Failed', 'Could not generate CSV file.');
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -49,7 +76,10 @@ export default function ProductsNative({
               {products.length} Items Total
             </Text>
           </View>
-          <TouchableOpacity className="h-9 w-9 bg-brand rounded-xl items-center justify-center shadow-sm">
+          <TouchableOpacity
+            onPress={exportToCSV}
+            className="h-9 w-9 bg-brand rounded-xl items-center justify-center shadow-sm"
+          >
             <Download size={18} color="white" />
           </TouchableOpacity>
         </View>
@@ -131,9 +161,9 @@ export default function ProductsNative({
             product={item}
             onEdit={() => onEdit(item)}
             onDelete={() => onDelete(item.id)}
-            onHistory={() => onShowHistory(item)}
-            onIncrement={() => onUpdateQuantity(item.id, item.quantity + 1, 'addition')}
-            onDecrement={() => onUpdateQuantity(item.id, item.quantity - 1, 'reduction')}
+            onHistory={() => setHistoryProduct(item)}
+            onIncrement={() => setStockModal({ product: item, mode: 'in' })}
+            onDecrement={() => setStockModal({ product: item, mode: 'out' })}
           />
         )}
         ListEmptyComponent={
@@ -142,6 +172,29 @@ export default function ProductsNative({
           </View>
         }
       />
+
+      {/* Modal & Drawer */}
+      {stockModal.product && (
+        <StockModalNative
+          isOpen={!!stockModal.product}
+          product={stockModal.product}
+          mode={stockModal.mode}
+          onClose={() => setStockModal({ product: null, mode: 'in' })}
+          onConfirm={(qty, notes) => {
+            const newQty = stockModal.mode === 'in' ? stockModal.product!.quantity + qty : stockModal.product!.quantity - qty;
+            onUpdateQuantity(stockModal.product!.id, newQty, stockModal.mode === 'in' ? 'addition' : 'reduction', notes);
+          }}
+        />
+      )}
+
+      {historyProduct && (
+        <ProductHistoryDrawerNative
+          isOpen={!!historyProduct}
+          product={historyProduct}
+          logs={logs}
+          onClose={() => setHistoryProduct(null)}
+        />
+      )}
     </View>
   );
 }

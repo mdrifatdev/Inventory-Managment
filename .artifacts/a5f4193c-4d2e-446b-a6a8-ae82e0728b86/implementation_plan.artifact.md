@@ -1,45 +1,36 @@
-# Implementation Plan - Full UI Migration to React Native
+# Implementation Plan - Fix Build Error (Expo Migration)
 
-This plan details the step-by-step conversion of all existing web pages and components to high-quality React Native (Expo) components using **NativeWind** for styling and **Lucide-React-Native** for icons.
+The build is failing because the GitHub Action workflow is still trying to build the project as a **Capacitor/Vite** app, but we have migrated to **React Native (Expo)**. This plan updates the CI/CD pipeline to support the new architecture.
 
 ## Proposed Changes
 
-### [Phase 1: Shared Native Components]
-Create a set of reusable native components to ensure UI consistency across the app.
-- **`NativeCard.tsx`**: A styled `View` for consistent grouping.
-- **`NativeButton.tsx`**: A `TouchableOpacity` with variants (Primary, Secondary, Danger).
-- **`NativeInput.tsx`**: A `TextInput` with integrated labels and styling.
+### [CI/CD Optimization]
 
-### [Phase 2: Feature Pages Migration]
-Rewrite each web page using React Native components and hooks.
+#### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
+- **Remove Web Build**: Remove the `npm run build` (Vite) step as it's no longer needed for a native app.
+- **Add Expo Prebuild**: Add a step to run `npx expo prebuild --platform android`. This generates the native Android project from your React Native code.
+- **Update Build Step**: Ensure Gradle runs on the newly generated Android project.
+- **Environment Variables**: Map Supabase secrets to Expo public environment variables (`EXPO_PUBLIC_...`).
 
-#### 1. Dashboard Migration
-- **Target**: `src/pages/Dashboard.native.tsx` (to be used in `App.tsx`).
-- **Components**: Use `View` for stat grids, `ScrollView` for the main layout, and `FlatList` for the "Recent Activity" section.
+### [Cleanup]
 
-#### 2. Products List Migration
-- **Target**: `src/pages/Products.native.tsx`.
-- **Features**: Implement a sticky search header, a horizontal `ScrollView` for category pills, and a performant `FlatList` for product cards.
-- **Modals**: Convert `StockModal` and `DeleteConfirmation` to native `Modal` or bottom sheets.
-
-#### 3. Product Form Migration
-- **Target**: `src/components/ProductForm.native.tsx`.
-- **Integration**: Incorporate the newly created `AppImagePicker` for photos/gallery. Use native pickers for categories.
-
-#### 4. History Migration
-- **Target**: `src/pages/History.native.tsx`.
-- **Layout**: Simple `FlatList` showing transaction logs with color-coded indicators.
-
-### [Phase 3: Navigation Integration]
-- Update `App.tsx` to link the real native pages to the Bottom Tab and Stack navigators.
+#### [DELETE] [capacitor.config.ts](file:///H:/inventory/Inventory-Managment/capacitor.config.ts)
+- Remove old Capacitor configuration to prevent confusion.
+#### [DELETE] [vite.config.ts](file:///H:/inventory/Inventory-Managment/vite.config.ts)
+- Remove Vite configuration as it's no longer used.
+#### [DELETE] [android/](file:///H:/inventory/Inventory-Managment/android/)
+- **CRITICAL**: Remove the old Capacitor-based `android` folder. Expo will generate a fresh, compatible version during the build process.
 
 ## Verification Plan
 
-### Automated Verification
-- Verify that no HTML tags (`div`, `span`, `img`, `button`) remain in the `.native.tsx` files.
-- Ensure all styles are applied via `className` (NativeWind).
+### Manual Verification
+1. Push the changes to GitHub.
+2. Monitor the "Build Android APK" workflow.
+3. It should now:
+   - Install dependencies.
+   - Run `expo prebuild` successfully.
+   - Run `./gradlew assembleRelease` inside the generated `android` folder.
+   - Upload the resulting APK.
 
-### Manual Verification (on device/emulator)
-- **Navigation**: Verify smooth transitions between Dashboard, Products, and History tabs.
-- **Scrolling**: Test the scrolling performance of the Products list with many items.
-- **Form Submission**: Add a product with an image and verify it appears in the list.
+> [!IMPORTANT]
+> The first run might take a bit longer as it generates the native code for the first time in the CI environment.

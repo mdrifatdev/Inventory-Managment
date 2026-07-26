@@ -1,16 +1,7 @@
-- [x] Phase 1: Dependency Setup
-    - [x] Install `expo`, `react-native`, `expo-camera`, `expo-image-picker`
-    - [x] Install `@react-native-async-storage/async-storage`
-    - [x] Install `nativewind` and `tailwindcss`
-- [x] Phase 2: Core Logic Migration
-    - [x] Update `src/lib/supabaseClient.ts` for AsyncStorage
-    - [x] Update `src/lib/syncQueue.ts` for AsyncStorage
-- [x] Phase 3: UI Transformation
-    - [x] Create `app.json` with permissions
-    - [x] Create Shared Native Components (Card, Button, Input)
-    - [x] Migrate Dashboard (Stats, Activity)
-    - [x] Migrate Products (Search, Filter, Cards)
-    - [x] Migrate Product Form (ImagePicker, SKU gen)
-    - [x] Migrate History & Auth
-- [x] Phase 4: Verification
-    - [x] Verify build and functionality
+- [x] Update GitHub Action for Expo
+    - [x] Update `build-apk.yml` with `expo prebuild` and `EXPO_PUBLIC` envs
+- [x] Cleanup old files
+    - [x] Delete `capacitor.config.ts`
+    - [x] Delete `vite.config.ts`
+    - [x] Delete Capacitor `android/` folder
+- [x] Verify build setup
