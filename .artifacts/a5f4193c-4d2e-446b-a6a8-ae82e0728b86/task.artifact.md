@@ -1,7 +1,3 @@
-- [x] Update GitHub Action for Expo
-    - [x] Update `build-apk.yml` with `expo prebuild` and `EXPO_PUBLIC` envs
-- [x] Cleanup old files
-    - [x] Delete `capacitor.config.ts`
-    - [x] Delete `vite.config.ts`
-    - [x] Delete Capacitor `android/` folder
-- [x] Verify build setup
+- [x] Update `.github/workflows/build-apk.yml` to remove pre-emptive Gradle caching
+- [x] Reorder build steps to generate the `android` folder before Gradle setup
+- [ ] Verify build completion
