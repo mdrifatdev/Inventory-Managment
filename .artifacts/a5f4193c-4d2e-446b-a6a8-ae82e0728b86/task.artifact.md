@@ -1,5 +1,5 @@
-- [x] Remove missing asset requirements from `app.json`
-- [x] Update GitHub Action to force fresh dependency resolution
-- [x] Add `react-native-reanimated` and `expo-constants` to `package.json`
-- [x] Update `expo prebuild` flags in CI
-- [ ] Verify build on next push
+- [x] Create `postcss.config.js` to ensure synchronous tailwind processing
+- [x] Create `metro.config.js` for proper asset handling
+- [x] Update `package.json` to ensure no caret on `tailwindcss` (pinned to 3.3.2)
+- [x] Update `babel.config.js` with `react-native-reanimated/plugin`
+- [x] Update GitHub Action with `--force` install and `--clean` prebuild

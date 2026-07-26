@@ -1,40 +1,43 @@
-# Implementation Plan - Fix GitHub Action Build (Expo Prebuild & Assets)
+# Implementation Plan - Fix NativeWind Async PostCSS Error
 
-The build is likely failing during `npx expo prebuild` because the required asset files (icons and splash screen) specified in `app.json` are missing from the repository root. Additionally, I will optimize the dependency installation to handle the React 19 to 18 transition more cleanly.
+The build is failing during the "createBundleReleaseJsAndAssets" task with the error: `Use process(css).then(cb) to work with async plugins`. This is a known incompatibility between NativeWind v2 and Tailwind CSS versions 3.3.3 or higher, as they introduce asynchronous PostCSS features that NativeWind v2 cannot handle synchronously.
 
 ## Proposed Changes
 
-### [Assets & Configuration]
-
-#### [NEW] [assets/](file:///H:/inventory/Inventory-Managment/assets/)
-- Create the `assets` directory.
-- Add placeholder images for `icon.png`, `splash.png`, and `adaptive-icon.png` so `expo prebuild` can succeed.
-
-#### [MODIFY] [app.json](file:///H:/inventory/Inventory-Managment/app.json)
-- Update paths to ensure they point correctly to the new assets.
-
-### [CI/CD Workflow]
-
-#### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- **Delete `package-lock.json`**: In CI, we will delete the existing lock file before `npm install`. This forces a fresh resolution that respects the React 18 downgrade, avoiding `ERESOLVE` errors entirely.
-- **Expo Prebuild Flags**: Add `--no-install` to `prebuild` since we already do a full install.
-- **Gradle Permissions**: Ensure `gradlew` is executable in the generated directory.
-
-### [Dependencies]
+### [Dependency Fix]
 
 #### [MODIFY] [package.json](file:///H:/inventory/Inventory-Managment/package.json)
-- Add `react-native-reanimated` (required for some NativeWind/Navigation animations).
-- Add `expo-constants` (often needed for Supabase/Config access).
+- Ensure `tailwindcss` is pinned exactly to `3.3.2` (no caret `^`).
+- **Remove all leftover web dependencies**: I will double-check for any remaining web-only packages that might be causing resolution issues in CI.
+
+### [PostCSS Configuration]
+
+#### [NEW] [postcss.config.js](file:///H:/inventory/Inventory-Managment/postcss.config.js)
+- Create a minimal `postcss.config.js` to explicitly control the plugin pipeline and ensure it remains synchronous.
+
+```javascript
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+  },
+};
+```
+
+### [Metro Optimization]
+
+#### [NEW] [metro.config.js](file:///H:/inventory/Inventory-Managment/metro.config.js)
+- Create a standard `metro.config.js` to ensure the bundler is correctly configured for Expo and NativeWind.
+
+### [CI/CD Workflow Update]
+
+#### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
+- Add a step to clear the Metro cache before building.
+- Ensure `npm install` uses `--force` if necessary to override persistent lockfile mismatches.
 
 ## Verification Plan
 
-### Manual Verification
-1. Push changes.
-2. Monitor GitHub Actions.
-3. The build should now:
-   - Generate fresh dependencies.
-   - Find the placeholder icons and complete `prebuild`.
-   - Compile the APK using Gradle.
+### Automated Verification
+- The primary verification will be the successful completion of the GitHub Action "Build Release APK" job.
 
-> [!IMPORTANT]
-> Deleting the lock file in CI is a temporary measure to bridge the gap between the old Web lock file and the new Native dependencies.
+### Manual Verification
+- If you have a local environment, run `./gradlew assembleRelease` in the `android` folder (after `npx expo prebuild`) to verify the fix.
