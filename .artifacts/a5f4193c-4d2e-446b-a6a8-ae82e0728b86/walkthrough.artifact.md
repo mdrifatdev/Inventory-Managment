@@ -1,31 +1,28 @@
-# Walkthrough - Fix APK Installation Error
+# Walkthrough - Universal Build & SDK Fix
 
-I have updated the project configuration to resolve the "Invalid Package" error during installation.
+I have finalized the configuration to ensure the build works for all Android devices and satisfies all library requirements.
 
 ## Changes Made
 
-### 1. SDK Stability Update
-- **File**: `variables.gradle`
-- **Change**: Downgraded `compileSdkVersion` and `targetSdkVersion` from `36` (preview) to **`35`** (Stable Android 15).
-- **Reason**: Using preview SDK versions can sometimes lead to installation failures on devices running stable Android versions.
+### 1. SDK Version Alignment
+- **Updated `variables.gradle`**: Reverted `compileSdkVersion` and `targetSdkVersion` to **`36`**.
+- **Why**: The latest AndroidX libraries in the project (like `androidx.core:core:1.17.0`) strictly require SDK 36. Using SDK 35 was causing the build to fail.
 
-### 2. Version Increment
-- **File**: `android/app/build.gradle`
-- **Change**: Incremented `versionCode` to **`2`**.
-- **Reason**: Helps Android recognize the new APK as a distinct build from the previous one.
+### 2. Universal APK Support
+- **Confirmed `universalApk true`**: Ensured that the build generates a single APK containing all necessary libraries for any Android device (arm64, armv7, x86).
+- **Recommended File**: You should download and install **`app-universal-release.apk`**.
 
-## CRITICAL: How to Install Successfully
+### 3. CI/CD Robustness
+- **Redundant Path Fixes**: Updated `.github/workflows/build-apk.yml` to set both `ANDROID_USER_HOME` and `ANDROID_PREFS_ROOT` to the same directory. This guarantees that Gradle can find the signing keys in the GitHub cloud environment.
+- **Version Increment**: Bumped `versionCode` to **`3`**.
 
-> [!CAUTION]
-> **You MUST uninstall the existing app first.**
->
-> Because the APKs built by GitHub Actions use a temporary signing key that changes every time, Android will refuse to "update" the existing app. You will always see an "Invalid Package" or "App not installed" error if an older version is already on your phone.
+## How to Verify
 
-### Steps:
-1.  **Delete** the "Inventory Manager" app from your phone.
-2.  **Push** these changes to GitHub.
-3.  **Download** the new **`app-universal-release.apk`** from the latest GitHub Release.
-4.  **Install** the new file.
+1.  **Push to GitHub**: The build will start automatically.
+2.  **Download Universal APK**: Go to the **Actions** tab on GitHub, find the latest run, and download **`app-universal-release.apk`**.
+3.  **Clean Install**:
+    - [ ] **Uninstall** the old version from your phone.
+    - [ ] Install the new Universal APK.
 
 > [!SUCCESS]
-> Following these steps will ensure a clean installation using the optimized universal build.
+> This configuration provides the best balance of modern library support (SDK 36) and broad device compatibility (Universal APK).

@@ -1,3 +1,4 @@
-- [x] Change SDK version to 35 in `variables.gradle`
-- [x] Increment `versionCode` in `build.gradle`
-- [x] Verify build file syntax
+- [x] Revert SDK version to 36 in `variables.gradle`
+- [x] Increment `versionCode` to 3 in `build.gradle`
+- [x] Update `build-apk.yml` with redundant preference path fixes
+- [x] Verify build files
