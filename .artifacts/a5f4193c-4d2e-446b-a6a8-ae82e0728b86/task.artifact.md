@@ -1,3 +1,4 @@
-- [x] Update root .github/workflows/build-apk.yml
-- [x] Add Generate Debug Keystore step
-- [x] Set ANDROID_USER_HOME and remove ANDROID_PREFS_ROOT
+- [x] Update `vite.config.ts` to drop console/debugger in production
+- [x] Update `android/app/build.gradle` for minification and ABI splits
+- [x] Update `.github/workflows/build-apk.yml` for release builds
+- [x] Verify changes

@@ -59,17 +59,17 @@ jobs:
           mkdir -p .android
           keytool -genkey -v -keystore .android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
         env:
           ANDROID_USER_HOME: ${{ github.workspace }}/.android
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: inventory-manager-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: inventory-manager-release
+          path: android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
       - name: Get short SHA
@@ -82,10 +82,10 @@ jobs:
           tag_name: build-${{ steps.sha.outputs.short }}
           name: "APK Build (${{ steps.sha.outputs.short }})"
           body: |
-            Automated debug APK build from commit `${{ github.sha }}`.
+            Automated release APK build from commit `${{ github.sha }}`.
 
-            Download the APK below and install on your Android device.
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+            This build is optimized for performance and size using R8 minification and ABI splitting.
+          files: android/app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: true
         env:
