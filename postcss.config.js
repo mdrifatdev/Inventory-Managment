@@ -1,5 +1,1 @@
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-  },
-};
+// Removed - web-only dependency
