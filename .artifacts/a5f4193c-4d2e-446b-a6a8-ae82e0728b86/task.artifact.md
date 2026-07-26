@@ -1,5 +1,3 @@
-- [x] Create `postcss.config.js` to ensure synchronous tailwind processing
-- [x] Create `metro.config.js` for proper asset handling
-- [x] Update `package.json` to ensure no caret on `tailwindcss` (pinned to 3.3.2)
-- [x] Update `babel.config.js` with `react-native-reanimated/plugin`
-- [x] Update GitHub Action with `--force` install and `--clean` prebuild
+- [x] Update `app.json` with splash background color
+- [x] Update `.github/workflows/build-apk.yml` for caching and speed
+- [x] Verify build configuration

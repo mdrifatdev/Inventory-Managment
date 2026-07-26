@@ -26,15 +26,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
 
       - name: Remove old lockfile
         run: rm -f package-lock.json
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --force
+        run: npm install --legacy-peer-deps --force --prefer-offline
 
       - name: Expo Prebuild
-        run: npx expo prebuild --platform android --no-install --clean
+        run: npx expo prebuild --platform android --no-install
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -46,6 +47,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+          cache: 'gradle'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3

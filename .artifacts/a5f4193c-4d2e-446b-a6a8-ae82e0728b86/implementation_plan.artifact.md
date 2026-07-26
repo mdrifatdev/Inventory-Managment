@@ -1,43 +1,28 @@
-# Implementation Plan - Fix NativeWind Async PostCSS Error
+# Implementation Plan - Fix Resource Error & Optimize Build Time
 
-The build is failing during the "createBundleReleaseJsAndAssets" task with the error: `Use process(css).then(cb) to work with async plugins`. This is a known incompatibility between NativeWind v2 and Tailwind CSS versions 3.3.3 or higher, as they introduce asynchronous PostCSS features that NativeWind v2 cannot handle synchronously.
+This plan addresses the `color/splashscreen_background` not found error and implements caching to speed up the GitHub Action build.
 
 ## Proposed Changes
 
-### [Dependency Fix]
+### [Expo Configuration]
 
-#### [MODIFY] [package.json](file:///H:/inventory/Inventory-Managment/package.json)
-- Ensure `tailwindcss` is pinned exactly to `3.3.2` (no caret `^`).
-- **Remove all leftover web dependencies**: I will double-check for any remaining web-only packages that might be causing resolution issues in CI.
+#### [MODIFY] [app.json](file:///H:/inventory/Inventory-Managment/app.json)
+- Add a minimal `splash` configuration with a `backgroundColor`. This ensures that `expo prebuild` generates the required Android color resources, fixing the "resource not found" error during the resource linking phase.
 
-### [PostCSS Configuration]
-
-#### [NEW] [postcss.config.js](file:///H:/inventory/Inventory-Managment/postcss.config.js)
-- Create a minimal `postcss.config.js` to explicitly control the plugin pipeline and ensure it remains synchronous.
-
-```javascript
-module.exports = {
-  plugins: {
-    tailwindcss: {},
-  },
-};
-```
-
-### [Metro Optimization]
-
-#### [NEW] [metro.config.js](file:///H:/inventory/Inventory-Managment/metro.config.js)
-- Create a standard `metro.config.js` to ensure the bundler is correctly configured for Expo and NativeWind.
-
-### [CI/CD Workflow Update]
+### [CI/CD Workflow Optimization]
 
 #### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- Add a step to clear the Metro cache before building.
-- Ensure `npm install` uses `--force` if necessary to override persistent lockfile mismatches.
+- **Node.js Caching**: Enable `cache: 'npm'` in the `actions/setup-node` step to speed up dependency installation.
+- **Gradle Caching**: Enable `cache: 'gradle'` in the `actions/setup-java` step. Since this step now runs *after* `npx expo prebuild`, it will correctly find the generated Gradle files and cache the downloaded dependencies and build artifacts.
+- **Dependency Install**: Use `npm install --prefer-offline` to leverage the cache more effectively.
+- **Remove `--clean`**: Remove the `--clean` flag from `expo prebuild`. In a fresh CI environment, this is redundant and adds extra processing time.
 
 ## Verification Plan
 
 ### Automated Verification
-- The primary verification will be the successful completion of the GitHub Action "Build Release APK" job.
+- Push changes and monitor the GitHub Action run.
+- The build should now pass the `processReleaseResources` task.
+- The total build time should be noticeably shorter due to caching.
 
 ### Manual Verification
-- If you have a local environment, run `./gradlew assembleRelease` in the `android` folder (after `npx expo prebuild`) to verify the fix.
+- Verify that the resulting APK still works correctly and shows a white splash screen (default).
