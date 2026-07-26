@@ -1,4 +1,3 @@
-- [x] Remove README.md
-- [x] Update `src/lib/supabaseClient.ts` with robust initialization
-- [x] Create `supabase_setup.sql` for easy database configuration
-- [x] Verify build and functionality
+- [x] Change SDK version to 35 in `variables.gradle`
+- [x] Increment `versionCode` in `build.gradle`
+- [x] Verify build file syntax
