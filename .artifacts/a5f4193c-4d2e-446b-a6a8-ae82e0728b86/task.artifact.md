@@ -1,4 +1,5 @@
-- [x] Remove web-only dependencies (dexie, react-dom) from `package.json`
-- [x] Update `build-apk.yml` to use `npm install --legacy-peer-deps`
-- [x] Remove remaining web root files (`metadata.json`, `tsconfig.json`)
-- [ ] Verify CI build on next push
+- [x] Remove missing asset requirements from `app.json`
+- [x] Update GitHub Action to force fresh dependency resolution
+- [x] Add `react-native-reanimated` and `expo-constants` to `package.json`
+- [x] Update `expo prebuild` flags in CI
+- [ ] Verify build on next push

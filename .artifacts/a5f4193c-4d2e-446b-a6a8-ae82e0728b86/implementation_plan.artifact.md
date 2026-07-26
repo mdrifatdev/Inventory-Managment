@@ -1,32 +1,40 @@
-# Implementation Plan - Fix Dependency Errors & Finalize Native Migration
+# Implementation Plan - Fix GitHub Action Build (Expo Prebuild & Assets)
 
-The GitHub Action is failing because of a dependency conflict between the old React 19 web-related packages and the new React 18.2.0 required by React Native. This plan cleans up those conflicts and removes the remaining web development traces.
+The build is likely failing during `npx expo prebuild` because the required asset files (icons and splash screen) specified in `app.json` are missing from the repository root. Additionally, I will optimize the dependency installation to handle the React 19 to 18 transition more cleanly.
 
 ## Proposed Changes
 
-### [Dependency Management]
+### [Assets & Configuration]
 
-#### [MODIFY] [package.json](file:///H:/inventory/Inventory-Managment/package.json)
-- Removed `dexie`, `dexie-react-hooks`, and `react-dom` to eliminate web-specific logic and conflicts.
-- Ensured all dependencies align with React 18.2.0.
+#### [NEW] [assets/](file:///H:/inventory/Inventory-Managment/assets/)
+- Create the `assets` directory.
+- Add placeholder images for `icon.png`, `splash.png`, and `adaptive-icon.png` so `expo prebuild` can succeed.
+
+#### [MODIFY] [app.json](file:///H:/inventory/Inventory-Managment/app.json)
+- Update paths to ensure they point correctly to the new assets.
+
+### [CI/CD Workflow]
 
 #### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- Changed `npm ci` to `npm install --legacy-peer-deps`.
-- **Reason**: The existing `package-lock.json` contains references to React 19 from the old web project. `--legacy-peer-deps` allows the build to proceed while the lock file transitions to the native dependencies.
+- **Delete `package-lock.json`**: In CI, we will delete the existing lock file before `npm install`. This forces a fresh resolution that respects the React 18 downgrade, avoiding `ERESOLVE` errors entirely.
+- **Expo Prebuild Flags**: Add `--no-install` to `prebuild` since we already do a full install.
+- **Gradle Permissions**: Ensure `gradlew` is executable in the generated directory.
 
-### [Cleanup]
+### [Dependencies]
 
-#### [DELETE] Remaining Web Files
-- Successfully removed `metadata.json` and `tsconfig.json` (web-configured).
-- The project is now 100% focused on React Native / Expo.
+#### [MODIFY] [package.json](file:///H:/inventory/Inventory-Managment/package.json)
+- Add `react-native-reanimated` (required for some NativeWind/Navigation animations).
+- Add `expo-constants` (often needed for Supabase/Config access).
 
 ## Verification Plan
 
 ### Manual Verification
-1. Push changes to GitHub.
+1. Push changes.
 2. Monitor GitHub Actions.
-3. The "Install dependencies" step should now pass using `--legacy-peer-deps`.
-4. The build should proceed to `expo prebuild` and then Gradle.
+3. The build should now:
+   - Generate fresh dependencies.
+   - Find the placeholder icons and complete `prebuild`.
+   - Compile the APK using Gradle.
 
-> [!SUCCESS]
-> Removing the obsolete web dependencies and allowing flexible peer dependency resolution will clear the path for the native build to succeed.
+> [!IMPORTANT]
+> Deleting the lock file in CI is a temporary measure to bridge the gap between the old Web lock file and the new Native dependencies.
