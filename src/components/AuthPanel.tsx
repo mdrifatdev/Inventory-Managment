@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/** অথ প্যানেল | Auth panel — sign in, sign up, offline mode, dark mode toggle */
+import { useState, type FormEvent } from 'react';
 import {
   User,
   Mail,
@@ -22,15 +23,12 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface AuthPanelProps {
   sessionUser: SupabaseUser | null;
-  isOfflineModeEnabled: boolean;
-  onViewChange: (view: string) => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
 }
 
 export default function AuthPanel({
   sessionUser,
-  onViewChange,
   isDarkMode,
   onToggleDarkMode,
 }: AuthPanelProps) {
@@ -45,7 +43,7 @@ export default function AuthPanel({
   const supabase = getSupabaseClient();
   const isSyncConfigured = !!supabase;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isSyncConfigured || !supabase) {
       setMessage({

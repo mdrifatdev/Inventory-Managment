@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, History as HistoryIcon, Filter, X, Calendar } from 'lucide-react';
+/** হিস্ট্রি পেজ | Full history log — filter by type, search by date */
+import { useState } from 'react';
+import { ArrowUpRight, ArrowDownRight, History as HistoryIcon, X, Calendar } from 'lucide-react';
 import { InventoryLog } from '../types';
 import { formatDateTime, groupByDate } from '../lib/dateUtils';
 
@@ -16,7 +17,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
   const filteredLogs = logs.filter((log) => {
     if (filter === 'in' && log.type !== 'addition') return false;
     if (filter === 'out' && log.type !== 'reduction') return false;
-    
+
     if (searchDate) {
       const logDate = new Date(log.timestamp);
       const searchDateObj = new Date(searchDate);
@@ -25,14 +26,11 @@ export default function HistoryPage({ logs }: HistoryProps) {
                          logDate.getFullYear() === searchDateObj.getFullYear();
       if (!isSameDate) return false;
     }
-    
+
     return true;
   });
 
-  // Sort global history descending
   const sortedLogs = [...filteredLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  
-  // Group by date
   const groupedLogs = groupByDate(sortedLogs);
 
   const filterButtons: { key: FilterType; label: string }[] = [
@@ -43,14 +41,12 @@ export default function HistoryPage({ logs }: HistoryProps) {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-bold text-lg text-text-primary tracking-tight">History</h2>
           <p className="text-xs text-text-secondary mt-0.5">Stock movement log for all products.</p>
         </div>
 
-        {/* Filter pills */}
         <div className="flex items-center gap-1 bg-card border border-border-subtle p-1 rounded-lg shadow-sm">
           {filterButtons.map((btn) => (
             <button
@@ -69,7 +65,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
         </div>
       </div>
 
-      {/* Date Search */}
+      {/* তারিখ সার্চ | Date Search */}
       <div className="relative">
         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
         <input
@@ -88,7 +84,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
         )}
       </div>
 
-      {/* Log list grouped by date */}
+      {/* লগ লিস্ট | Log list grouped by date */}
       <div>
         {sortedLogs.length === 0 ? (
           <div className="py-16 text-center bg-card rounded-xl border border-border-subtle">
@@ -104,7 +100,7 @@ export default function HistoryPage({ logs }: HistoryProps) {
                   {dateLabel}
                   <span className="h-px bg-border-subtle flex-1"></span>
                 </h3>
-                
+
                 <div className="rounded-xl border border-border-subtle bg-card overflow-hidden shadow-sm">
                   <div className="divide-y divide-border-subtle">
                     {dayLogs.map((log) => {
@@ -113,7 +109,6 @@ export default function HistoryPage({ logs }: HistoryProps) {
 
                       return (
                         <div key={log.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-pagebg/50 transition-colors">
-                          {/* Direction icon */}
                           <div className={`shrink-0 h-9 w-9 rounded-lg flex items-center justify-center ${
                             isIn
                               ? 'bg-success-light text-success'
@@ -125,7 +120,6 @@ export default function HistoryPage({ logs }: HistoryProps) {
                             }
                           </div>
 
-                          {/* Details */}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-text-primary truncate">{log.productName}</p>
                             {log.notes && (
@@ -133,7 +127,6 @@ export default function HistoryPage({ logs }: HistoryProps) {
                             )}
                           </div>
 
-                          {/* Quantity & Time */}
                           <div className="flex items-center gap-4">
                             <span className={`shrink-0 text-sm font-bold font-mono px-2.5 py-1 rounded-md ${
                               isIn

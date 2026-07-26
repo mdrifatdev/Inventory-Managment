@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+/** প্রোডাক্ট ফর্ম | Product add/edit form — image upload, SKU generation */
+import { useState, useEffect, type DragEvent, type ChangeEvent, type FormEvent } from 'react';
 import {
   ArrowLeft,
   Upload,
@@ -8,7 +9,7 @@ import {
   X,
   ImageIcon
 } from 'lucide-react';
-import { Product, Category } from '../types';
+import { Product, Category, ALL_CATEGORIES, FALLBACK_IMAGE } from '../types';
 import { loadSettings } from '../lib/supabaseClient';
 
 interface ProductFormProps {
@@ -16,17 +17,6 @@ interface ProductFormProps {
   onSave: (product: Omit<Product, 'id' | 'updated_at'> & { id?: string }) => void;
   onCancel: () => void;
 }
-
-const CATEGORIES: Category[] = [
-  "Cables & Wiring",
-  "Switches & Sockets",
-  "Lighting & Bulbs",
-  "Circuit Breakers & Fuses",
-  "Fans & Ventilation",
-  "Power Tools",
-  "Testing Equipment",
-  "Other Accessories"
-];
 
 
 
@@ -65,7 +55,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     setSku(`EL-${catCode}-${randomNum}`);
   };
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -75,7 +65,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     }
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = async (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -84,7 +74,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     }
   };
 
-  const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       await handleImageUpload(e.target.files[0]);
     }
@@ -146,7 +136,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setFeedback({ type: 'error', text: 'Product name is required.' });
@@ -168,7 +158,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
       minThreshold: Math.max(0, Math.floor(Number(minThreshold))),
       brand: "Generic",
       description: description.trim() || '',
-      image_url: imageUrl || 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80',
+      image_url: imageUrl || FALLBACK_IMAGE,
       ...(productToEdit ? { id: productToEdit.id } : {})
     };
 
@@ -254,7 +244,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
         <div className="space-y-1.5">
           <label className="text-[11px] font-semibold text-text-secondary uppercase tracking-wide">Category</label>
           <div className="flex overflow-x-auto gap-1.5 scrollbar-hidden pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-            {CATEGORIES.map((cat) => (
+            {ALL_CATEGORIES.map((cat) => (
               <button
                 type="button"
                 key={cat}
@@ -410,7 +400,7 @@ export default function ProductForm({ productToEdit, onSave, onCancel }: Product
                 alt="Preview"
                 className="h-12 w-12 object-cover rounded-lg border border-border-subtle"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80';
+                  (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
                 }}
               />
               <div className="text-xs min-w-0">

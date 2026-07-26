@@ -1,17 +1,18 @@
-import React from 'react';
+/** প্রোডাক্ট কার্ড | Single product card — image, status, stock controls */
+import { type MouseEvent, type Key } from 'react';
 import { Minus, Plus, History, Info, Edit3, Trash2 } from 'lucide-react';
-import { Product } from '../types';
+import { Product, FALLBACK_IMAGE } from '../types';
 import { StatusBadge } from './StatusBadge';
 
 interface ProductCardProps {
   product: Product;
   onInspect: (product: Product) => void;
-  onIncrement: (e: React.MouseEvent, product: Product) => void;
-  onDecrement: (e: React.MouseEvent, product: Product) => void;
-  onHistory: (e: React.MouseEvent, product: Product) => void;
-  onEdit: (e: React.MouseEvent, product: Product) => void;
-  onDelete: (e: React.MouseEvent, product: Product) => void;
-  key?: React.Key;
+  onIncrement: (e: MouseEvent, product: Product) => void;
+  onDecrement: (e: MouseEvent, product: Product) => void;
+  onHistory: (e: MouseEvent, product: Product) => void;
+  onEdit: (e: MouseEvent, product: Product) => void;
+  onDelete: (e: MouseEvent, product: Product) => void;
+  key?: Key;
 }
 
 export function ProductCard({ 
@@ -38,7 +39,7 @@ export function ProductCard({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1558346490-a72e53ae2d4f?w=600&auto=format&fit=crop&q=80';
+            (e.target as HTMLImageElement).src = FALLBACK_IMAGE;
           }}
         />
 
@@ -46,7 +47,7 @@ export function ProductCard({
           <span className="bg-brand-dark/95 backdrop-blur-xs text-white px-2 py-0.5 rounded-md text-[10px] font-mono font-bold tracking-wider">
             {product.sku}
           </span>
-          <StatusBadge quantity={product.quantity} minThreshold={product.minThreshold} isSynced={(product as any).synced !== false} />
+          <StatusBadge quantity={product.quantity} minThreshold={product.minThreshold} />
         </div>
 
         <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-xs text-text-primary text-[11px] font-extrabold font-sans min-w-6 h-6 px-1.5 flex items-center justify-center rounded-full border border-border-subtle shadow-xs">
