@@ -1,5 +1,5 @@
-/** প্রোডাক্ট এডিট পেজ | Edit existing product page */
-import ProductForm from '../components/ProductForm';
+import React from 'react';
+import ProductFormNative from '../components/ProductForm.native';
 import { Product } from '../types';
 
 interface EditProductProps {
@@ -10,7 +10,7 @@ interface EditProductProps {
 
 export default function EditProduct({ product, onSave, onCancel }: EditProductProps) {
   return (
-    <ProductForm
+    <ProductFormNative
       productToEdit={product}
       onSave={onSave}
       onCancel={onCancel}

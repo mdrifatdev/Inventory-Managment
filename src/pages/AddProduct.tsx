@@ -1,5 +1,5 @@
-/** প্রোডাক্ট যোগ পেজ | Add new product page */
-import ProductForm from '../components/ProductForm';
+import React from 'react';
+import ProductFormNative from '../components/ProductForm.native';
 import { Product } from '../types';
 
 interface AddProductProps {
@@ -9,7 +9,7 @@ interface AddProductProps {
 
 export default function AddProduct({ onSave, onCancel }: AddProductProps) {
   return (
-    <ProductForm
+    <ProductFormNative
       onSave={onSave}
       onCancel={onCancel}
     />

@@ -1,9 +1,10 @@
 /**
- * সুপাবেস ক্লায়েন্ট ও লোকাল স্টোরেজ | Supabase client + localStorage fallback layer
- * অনলাইন থাকলে Supabase ব্যবহার করে, অফলাইনে localStorage এ ফলব্যাক করে
+ * সুপাবেস ক্লায়েন্ট ও লোকাল স্টোরেজ | Supabase client + AsyncStorage fallback layer
+ * অনলাইন থাকলে Supabase ব্যবহার করে, অফলাইনে AsyncStorage এ ফলব্যাক করে
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Product, Settings, InventoryLog, FALLBACK_IMAGE } from '../types';
 
 // ──── সিড ডেটা | Default seed data for first-time users ────
@@ -104,7 +105,7 @@ export const INITIAL_LOGS: InventoryLog[] = [
   }
 ];
 
-// ──── লোকালস্টোরেজ কী | Storage keys ────
+// ──── স্টোরেজ কী | Storage keys ────
 
 const SETTINGS_KEY = "eim_settings";
 const PRODUCTS_KEY = "eim_products";
@@ -112,10 +113,10 @@ const LOGS_KEY = "eim_logs";
 
 // ──── সেটিংস ম্যানেজমেন্ট | Settings load/save ────
 
-export function loadSettings(): Settings {
+export async function loadSettings(): Promise<Settings> {
   let savedSettings: Partial<Settings> = {};
   try {
-    const saved = localStorage.getItem(SETTINGS_KEY);
+    const saved = await AsyncStorage.getItem(SETTINGS_KEY);
     if (saved) {
       savedSettings = JSON.parse(saved);
     }
@@ -123,10 +124,10 @@ export function loadSettings(): Settings {
     console.error("Failed to load settings", e);
   }
   return {
-    supabaseUrl: savedSettings.supabaseUrl || (import.meta.env.VITE_SUPABASE_URL || "").trim(),
-    supabaseAnonKey: savedSettings.supabaseAnonKey || (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim(),
-    cloudinaryCloudName: savedSettings.cloudinaryCloudName || (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "").trim(),
-    cloudinaryUploadPreset: savedSettings.cloudinaryUploadPreset || (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "").trim(),
+    supabaseUrl: savedSettings.supabaseUrl || "",
+    supabaseAnonKey: savedSettings.supabaseAnonKey || "",
+    cloudinaryCloudName: savedSettings.cloudinaryCloudName || "",
+    cloudinaryUploadPreset: savedSettings.cloudinaryUploadPreset || "",
   };
 }
 
@@ -136,12 +137,13 @@ let cachedClient: SupabaseClient | null = null;
 let lastUrl = '';
 let lastAnonKey = '';
 
-export function getSupabaseClient(): SupabaseClient | null {
-  if (localStorage.getItem('force_offline') === 'true') {
+export async function getSupabaseClient(): Promise<SupabaseClient | null> {
+  const forceOffline = await AsyncStorage.getItem('force_offline');
+  if (forceOffline === 'true') {
     cachedClient = null;
     return null;
   }
-  const { supabaseUrl, supabaseAnonKey } = loadSettings();
+  const { supabaseUrl, supabaseAnonKey } = await loadSettings();
 
   // Clean up URL and key
   const cleanUrl = (supabaseUrl || "").trim().replace(/\/$/, "");
@@ -162,8 +164,8 @@ export function getSupabaseClient(): SupabaseClient | null {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: window.localStorage
+          detectSessionInUrl: false,
+          storage: AsyncStorage
         }
       });
       lastUrl = cleanUrl;
@@ -178,10 +180,10 @@ export function getSupabaseClient(): SupabaseClient | null {
   return null;
 }
 
-// ──── প্রোডাক্ট CRUD | Product operations (Supabase-first, localStorage fallback) ────
+// ──── প্রোডাক্ট CRUD | Product operations (Supabase-first, AsyncStorage fallback) ────
 
 export async function fetchProducts(): Promise<Product[]> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -190,7 +192,7 @@ export async function fetchProducts(): Promise<Product[]> {
         .order('name', { ascending: true });
 
       if (!error && data) {
-        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
+        await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(data));
         return data as Product[];
       }
       console.error("Supabase fetch failed, trying local storage", error);
@@ -199,12 +201,12 @@ export async function fetchProducts(): Promise<Product[]> {
     }
   }
 
-  const local = localStorage.getItem(PRODUCTS_KEY);
+  const local = await AsyncStorage.getItem(PRODUCTS_KEY);
   if (local) {
     return JSON.parse(local);
   }
 
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(INITIAL_PRODUCTS));
   return INITIAL_PRODUCTS;
 }
 
@@ -215,7 +217,7 @@ export async function insertProduct(product: Omit<Product, 'id' | 'updated_at'>)
     updated_at: new Date().toISOString()
   };
 
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -225,7 +227,7 @@ export async function insertProduct(product: Omit<Product, 'id' | 'updated_at'>)
         .single();
 
       if (!error && data) {
-        syncLocalProducts(data as Product);
+        await syncLocalProducts(data as Product);
         return data as Product;
       }
       console.error("Supabase insert failed, adding locally", error);
@@ -234,7 +236,7 @@ export async function insertProduct(product: Omit<Product, 'id' | 'updated_at'>)
     }
   }
 
-  syncLocalProducts(newProduct);
+  await syncLocalProducts(newProduct);
   return newProduct;
 }
 
@@ -244,7 +246,7 @@ export async function updateProductInDB(product: Product): Promise<Product> {
     updated_at: new Date().toISOString()
   };
 
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -255,7 +257,7 @@ export async function updateProductInDB(product: Product): Promise<Product> {
         .single();
 
       if (!error && data) {
-        updateLocalProduct(data as Product);
+        await updateLocalProduct(data as Product);
         return data as Product;
       }
       console.error("Supabase update failed, updating locally", error);
@@ -264,12 +266,12 @@ export async function updateProductInDB(product: Product): Promise<Product> {
     }
   }
 
-  updateLocalProduct(updatedProduct);
+  await updateLocalProduct(updatedProduct);
   return updatedProduct;
 }
 
 export async function deleteProductFromDB(id: string): Promise<boolean> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   let success = false;
 
   if (supabase) {
@@ -289,11 +291,11 @@ export async function deleteProductFromDB(id: string): Promise<boolean> {
     }
   }
 
-  const local = localStorage.getItem(PRODUCTS_KEY);
+  const local = await AsyncStorage.getItem(PRODUCTS_KEY);
   if (local) {
     const products: Product[] = JSON.parse(local);
     const filtered = products.filter(p => p.id !== id);
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
+    await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(filtered));
     if (!supabase) success = true;
   }
   return success;
@@ -302,7 +304,7 @@ export async function deleteProductFromDB(id: string): Promise<boolean> {
 // ──── লগ অপারেশন | Inventory log operations ────
 
 export async function fetchLogs(): Promise<InventoryLog[]> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -311,7 +313,7 @@ export async function fetchLogs(): Promise<InventoryLog[]> {
         .order('timestamp', { ascending: false });
 
       if (!error && data) {
-        localStorage.setItem(LOGS_KEY, JSON.stringify(data));
+        await AsyncStorage.setItem(LOGS_KEY, JSON.stringify(data));
         return data as InventoryLog[];
       }
     } catch (e) {
@@ -319,11 +321,11 @@ export async function fetchLogs(): Promise<InventoryLog[]> {
     }
   }
 
-  const local = localStorage.getItem(LOGS_KEY);
+  const local = await AsyncStorage.getItem(LOGS_KEY);
   if (local) {
     return JSON.parse(local);
   }
-  localStorage.setItem(LOGS_KEY, JSON.stringify(INITIAL_LOGS));
+  await AsyncStorage.setItem(LOGS_KEY, JSON.stringify(INITIAL_LOGS));
   return INITIAL_LOGS;
 }
 
@@ -338,7 +340,7 @@ export async function addInventoryLog(productId: string, productName: string, ty
     notes
   };
 
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -348,7 +350,7 @@ export async function addInventoryLog(productId: string, productName: string, ty
         .single();
 
       if (!error && data) {
-        saveLocalLog(data as InventoryLog);
+        await saveLocalLog(data as InventoryLog);
         return data as InventoryLog;
       }
     } catch (e) {
@@ -356,21 +358,21 @@ export async function addInventoryLog(productId: string, productName: string, ty
     }
   }
 
-  saveLocalLog(newLog);
+  await saveLocalLog(newLog);
   return newLog;
 }
 
-// ──── লোকাল সিঙ্ক হেল্পার | localStorage sync helpers (synchronous) ────
+// ──── লোকাল সিঙ্ক হেল্পার | AsyncStorage sync helpers ────
 
-function syncLocalProducts(p: Product) {
-  const local = localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
+async function syncLocalProducts(p: Product) {
+  const local = await AsyncStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
   const products: Product[] = JSON.parse(local);
   products.unshift(p);
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
 }
 
-function updateLocalProduct(p: Product) {
-  const local = localStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
+async function updateLocalProduct(p: Product) {
+  const local = await AsyncStorage.getItem(PRODUCTS_KEY) || JSON.stringify(INITIAL_PRODUCTS);
   const products: Product[] = JSON.parse(local);
   const index = products.findIndex(item => item.id === p.id);
   if (index !== -1) {
@@ -378,12 +380,12 @@ function updateLocalProduct(p: Product) {
   } else {
     products.unshift(p);
   }
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
 }
 
-function saveLocalLog(log: InventoryLog) {
-  const local = localStorage.getItem(LOGS_KEY) || JSON.stringify(INITIAL_LOGS);
+async function saveLocalLog(log: InventoryLog) {
+  const local = await AsyncStorage.getItem(LOGS_KEY) || JSON.stringify(INITIAL_LOGS);
   const logs: InventoryLog[] = JSON.parse(local);
   logs.unshift(log);
-  localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
+  await AsyncStorage.setItem(LOGS_KEY, JSON.stringify(logs));
 }

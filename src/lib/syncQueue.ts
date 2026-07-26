@@ -3,6 +3,7 @@
  * অফলাইনে করা সব পরিবর্তন কিউতে জমা রাখে, অনলাইন হলে Supabase এ পাঠায়
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Product, InventoryLog } from '../types';
 import { getSupabaseClient } from './supabaseClient';
 
@@ -15,35 +16,36 @@ export interface PendingOperation {
 
 const PENDING_OPS_KEY = 'eim_pending_ops';
 
-export function getPendingOps(): PendingOperation[] {
-  const raw = localStorage.getItem(PENDING_OPS_KEY);
+export async function getPendingOps(): Promise<PendingOperation[]> {
+  const raw = await AsyncStorage.getItem(PENDING_OPS_KEY);
   return raw ? JSON.parse(raw) : [];
 }
 
-function savePendingOps(ops: PendingOperation[]): void {
-  localStorage.setItem(PENDING_OPS_KEY, JSON.stringify(ops));
+async function savePendingOps(ops: PendingOperation[]): Promise<void> {
+  await AsyncStorage.setItem(PENDING_OPS_KEY, JSON.stringify(ops));
 }
 
-export function queueOperation(type: PendingOperation['type'], payload: any): void {
-  const ops = getPendingOps();
+export async function queueOperation(type: PendingOperation['type'], payload: any): Promise<void> {
+  const ops = await getPendingOps();
   ops.push({
     id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     type,
     payload,
     createdAt: new Date().toISOString(),
   });
-  savePendingOps(ops);
+  await savePendingOps(ops);
 }
 
-export function getPendingCount(): number {
-  return getPendingOps().length;
+export async function getPendingCount(): Promise<number> {
+  const ops = await getPendingOps();
+  return ops.length;
 }
 
 export async function syncPendingOps(): Promise<{ synced: number; failed: number }> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (!supabase) return { synced: 0, failed: 0 };
 
-  const ops = getPendingOps();
+  const ops = await getPendingOps();
   if (ops.length === 0) return { synced: 0, failed: 0 };
 
   let synced = 0;
@@ -95,6 +97,6 @@ export async function syncPendingOps(): Promise<{ synced: number; failed: number
     }
   }
 
-  savePendingOps(remaining);
+  await savePendingOps(remaining);
   return { synced, failed };
 }

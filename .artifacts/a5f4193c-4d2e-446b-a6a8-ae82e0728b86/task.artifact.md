@@ -1,3 +1,16 @@
-- [x] Update `.github/workflows/build-apk.yml` to use standard keystore path
-- [x] Remove `ANDROID_USER_HOME` and `ANDROID_PREFS_ROOT` from workflow
-- [x] Verify workflow syntax
+- [x] Phase 1: Dependency Setup
+    - [x] Install `expo`, `react-native`, `expo-camera`, `expo-image-picker`
+    - [x] Install `@react-native-async-storage/async-storage`
+    - [x] Install `nativewind` and `tailwindcss`
+- [x] Phase 2: Core Logic Migration
+    - [x] Update `src/lib/supabaseClient.ts` for AsyncStorage
+    - [x] Update `src/lib/syncQueue.ts` for AsyncStorage
+- [x] Phase 3: UI Transformation
+    - [x] Create `app.json` with permissions
+    - [x] Create Shared Native Components (Card, Button, Input)
+    - [x] Migrate Dashboard (Stats, Activity)
+    - [x] Migrate Products (Search, Filter, Cards)
+    - [x] Migrate Product Form (ImagePicker, SKU gen)
+    - [x] Migrate History & Auth
+- [x] Phase 4: Verification
+    - [x] Verify build and functionality
