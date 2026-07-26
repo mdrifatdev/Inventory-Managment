@@ -57,15 +57,12 @@ jobs:
 
       - name: Generate Debug Keystore
         run: |
-          mkdir -p .android
-          keytool -genkey -v -keystore .android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          mkdir -p ~/.android
+          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build release APK
         working-directory: android
         run: ./gradlew assembleRelease
-        env:
-          ANDROID_USER_HOME: ${{ github.workspace }}/.android
-          ANDROID_PREFS_ROOT: ${{ github.workspace }}/.android
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

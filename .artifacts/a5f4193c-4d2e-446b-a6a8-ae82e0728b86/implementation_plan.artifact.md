@@ -1,27 +1,20 @@
-# Implementation Plan - Fix APK Build Failure
+# Implementation Plan - Fix Android Locations Service Error in CI
 
-The build is failing because certain AndroidX dependencies require a minimum `compileSdk` of 36. Although I downgraded it to 35 for "stability," it caused a compilation error.
+The build is failing with `AndroidLocationsBuildService` error. This is a known issue in Android Gradle Plugin (AGP) 8.x when custom environment variables for Android preferences (`ANDROID_USER_HOME`, `ANDROID_PREFS_ROOT`) are set in a way that conflicts or confuses the internal directory creator.
 
 ## Proposed Changes
-
-### Android Configuration
-
-#### [MODIFY] [variables.gradle](file:///H:/inventory/Inventory-Managment/.claude/worktrees/ecstatic-swirles-b0e7e4/android/variables.gradle)
-- Revert `compileSdkVersion` and `targetSdkVersion` to **`36`** to satisfy dependency requirements.
-
-#### [MODIFY] [android/app/build.gradle](file:///H:/inventory/Inventory-Managment/.claude/worktrees/ecstatic-swirles-b0e7e4/android/app/build.gradle)
-- Increment `versionCode` to **`3`**.
 
 ### GitHub Action Workflow
 
 #### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- Explicitly set `ANDROID_PREFS_ROOT` to the same directory as `ANDROID_USER_HOME` to ensure maximum compatibility across all Gradle versions and plugins.
+
+1.  **Remove custom Preference Overrides**: Remove `ANDROID_USER_HOME` and `ANDROID_PREFS_ROOT` from the build step environment. These were intended to fix a local conflict but are causing the "AndroidDirectoryCreator" failure in the standard GitHub Actions Ubuntu environment.
+2.  **Standard Keystore Path**: Update the "Generate Debug Keystore" step to place the keystore in the default standard location (`~/.android/debug.keystore`). This allows Gradle to find it automatically without any custom configuration.
+3.  **Ensure Directory Exists**: Add `mkdir -p ~/.android` to ensure the directory is ready.
 
 ## Verification Plan
 
 ### Manual Verification
-1.  Push changes.
-2.  Monitor GitHub Actions for build success.
-3.  Download the `app-universal-release.apk`.
-4.  **Uninstall old app** from phone.
-5.  Install new APK.
+- Push the changes to GitHub.
+- Verify that the "Build release APK" step completes without the `AndroidLocationsBuildService` exception.
+- Verify that the APK is successfully signed using the generated key in the default location.

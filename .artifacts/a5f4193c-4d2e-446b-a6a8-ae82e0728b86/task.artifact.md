@@ -1,4 +1,3 @@
-- [x] Revert SDK version to 36 in `variables.gradle`
-- [x] Increment `versionCode` to 3 in `build.gradle`
-- [x] Update `build-apk.yml` with redundant preference path fixes
-- [x] Verify build files
+- [x] Update `.github/workflows/build-apk.yml` to use standard keystore path
+- [x] Remove `ANDROID_USER_HOME` and `ANDROID_PREFS_ROOT` from workflow
+- [x] Verify workflow syntax
