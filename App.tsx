@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LayoutDashboard, Package, History, User, Plus } from 'lucide-react-native';
 import { getSupabaseClient } from './src/lib/supabaseClient';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useProducts } from './src/hooks/useProducts';
+import { Colors, Spacing } from './src/constants/theme';
+import { logger } from './src/lib/logger';
 
 // Native Pages
 import DashboardNative from './src/pages/Dashboard.native';
@@ -20,22 +22,38 @@ import EditProduct from './src/pages/EditProduct';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function TabNavigator({ navigation, sessionUser, products, logs, updateProduct, deleteProduct }: any) {
+interface TabNavigatorProps {
+  navigation: any;
+  sessionUser: SupabaseUser | null;
+  products: any[];
+  logs: any[];
+  updateProduct: any;
+  deleteProduct: any;
+}
+
+function TabNavigator({
+  navigation,
+  sessionUser,
+  products,
+  logs,
+  updateProduct,
+  deleteProduct,
+}: TabNavigatorProps) {
   return (
-    <View className="flex-1">
+    <View style={styles.flex}>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#3b82f6',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: Colors.textTertiary,
           tabBarStyle: {
             height: 70,
-            paddingBottom: 15,
-            paddingTop: 10,
+            paddingBottom: Spacing.md,
+            paddingTop: Spacing.sm,
             borderTopWidth: 1,
-            borderTopColor: '#f1f5f9',
-            backgroundColor: '#ffffff',
+            borderTopColor: Colors.border,
+            backgroundColor: Colors.surface,
             elevation: 0,
-            shadowOpacity: 0
+            shadowOpacity: 0,
           },
           headerShown: false,
         }}
@@ -68,7 +86,15 @@ function TabNavigator({ navigation, sessionUser, products, logs, updateProduct, 
               onDelete={(id) => {
                 Alert.alert('Delete Item', 'Are you sure you want to remove this product?', [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => deleteProduct(id) }
+                  {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                      deleteProduct(id)
+                        .then(() => logger.info('Product deleted'))
+                        .catch((err) => logger.error('Delete failed', err));
+                    },
+                  },
                 ]);
               }}
               onUpdateQuantity={updateProduct}
@@ -104,9 +130,9 @@ function TabNavigator({ navigation, sessionUser, products, logs, updateProduct, 
       <TouchableOpacity
         onPress={() => navigation.navigate('AddProduct')}
         activeOpacity={0.9}
-        className="absolute bottom-24 right-6 h-14 w-14 rounded-full bg-brand items-center justify-center shadow-lg shadow-brand/40"
+        style={styles.fab}
       >
-        <Plus color="white" size={24} />
+        <Plus color={Colors.textInverse} size={24} />
       </TouchableOpacity>
     </View>
   );
@@ -115,32 +141,53 @@ function TabNavigator({ navigation, sessionUser, products, logs, updateProduct, 
 export default function App() {
   const [sessionUser, setSessionUser] = useState<SupabaseUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-
-  const { products, logs, loading: productsLoading, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, logs, loading: productsLoading, addProduct, updateProduct, deleteProduct, error } = useProducts();
 
   useEffect(() => {
-    const initAuth = async () => {
-      const supabase = await getSupabaseClient();
-      if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSessionUser(session?.user ?? null);
+    let unsubscribe: (() => void) | null = null;
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const initAuth = async () => {
+      try {
+        const supabase = await getSupabaseClient();
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
           setSessionUser(session?.user ?? null);
-        });
+
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSessionUser(session?.user ?? null);
+          });
+          unsubscribe = () => subscription.unsubscribe();
+        }
+      } catch (err) {
+        logger.error('Auth initialization failed', err);
+      } finally {
         setAuthLoading(false);
-        return () => subscription.unsubscribe();
       }
-      setAuthLoading(false);
     };
+
     initAuth();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   if (authLoading || (productsLoading && products.length === 0)) {
     return (
-      <View className="flex-1 items-center justify-center bg-pagebg">
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text className="mt-4 text-text-secondary font-bold text-xs uppercase tracking-widest">Electric Inventory</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Electric Inventory</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorTitle}>⚠️ Error</Text>
+        <Text style={styles.errorMessage}>{error}</Text>
       </View>
     );
   }
@@ -165,8 +212,13 @@ export default function App() {
           {(props) => (
             <AddProduct
               onSave={async (p) => {
-                await addProduct(p);
-                props.navigation.goBack();
+                try {
+                  await addProduct(p);
+                  props.navigation.goBack();
+                } catch (err) {
+                  logger.error('Failed to add product', err);
+                  Alert.alert('Error', 'Failed to add product. Please try again.');
+                }
               }}
               onCancel={() => props.navigation.goBack()}
             />
@@ -177,10 +229,13 @@ export default function App() {
             <EditProduct
               product={props.route.params.product}
               onSave={async (p) => {
-                // Here we'd need to calculate diff etc. like in old App.tsx
-                // For now, simple update
-                await updateProduct(p as any);
-                props.navigation.goBack();
+                try {
+                  await updateProduct(p as any);
+                  props.navigation.goBack();
+                } catch (err) {
+                  logger.error('Failed to update product', err);
+                  Alert.alert('Error', 'Failed to update product. Please try again.');
+                }
               }}
               onCancel={() => props.navigation.goBack()}
             />
@@ -190,3 +245,57 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.pageBg,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    color: Colors.textSecondary,
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 2,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.errorLight,
+    paddingHorizontal: Spacing.lg,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.error,
+    marginBottom: Spacing.md,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: Colors.text,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 90,
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+  },
+});
