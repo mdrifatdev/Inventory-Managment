@@ -2,7 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - claude/ecstatic-swirles-b0e7e4
     paths-ignore: ['**.md']
   workflow_dispatch:
 
@@ -62,7 +64,7 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease
         env:
-          ANDROID_PREFS_ROOT: ""
+          ANDROID_USER_HOME: ${{ github.workspace }}/.android
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -83,7 +85,9 @@ jobs:
           body: |
             Automated release APK build from commit `${{ github.sha }}`.
 
-            This build is optimized for performance and size using R8 minification and ABI splitting.
+            This build is optimized for performance and size.
+            
+            **Recommended**: Download and install **`app-universal-release.apk`** for maximum compatibility with all devices.
           files: android/app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: true

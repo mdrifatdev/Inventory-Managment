@@ -1,3 +1,4 @@
-- [x] Update root .github/workflows/build-apk.yml
-- [x] Add Generate Debug Keystore step
-- [x] Set ANDROID_USER_HOME and remove ANDROID_PREFS_ROOT
+- [x] Enable Universal APK in `android/app/build.gradle`
+- [x] Configure signing compatibility (V1/V2)
+- [x] Update artifact naming in GitHub Action
+- [x] Verify changes
