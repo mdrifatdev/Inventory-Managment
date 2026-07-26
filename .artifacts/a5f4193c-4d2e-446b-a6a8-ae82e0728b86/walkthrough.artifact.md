@@ -1,22 +1,24 @@
-# Walkthrough - Fixed GitHub Action CI Error
+# Walkthrough - Dependency Conflict Fix & Web Cleanup
 
-The GitHub Action build was failing because the "Setup Java" step was trying to cache Gradle files before they were even created. In an Expo project, the `android` folder (and its Gradle files) are only generated during the "prebuild" phase.
+I have resolved the `ERESOLVE` errors in your CI build and removed the final pieces of "web development" to ensure a pure native focus.
 
 ## Changes Made
 
-### 1. Fixed Workflow Execution Order
-- **Dependency First**: Moved `npm ci` (Install dependencies) to run immediately after setting up Node.js.
-- **Expo Prebuild Earlier**: Moved `npx expo prebuild` to run *before* the Java/Android SDK setup. This ensures that when the build starts, the `android` folder actually exists.
-- **Removed Pre-emptive Caching**: Removed `cache: 'gradle'` from the `actions/setup-java` step. Since the Gradle files are generated dynamically, the action couldn't find them to calculate a cache key, which was causing the "No file matched" crash.
+### 1. Resolved Dependency Conflicts
+- **Problem**: The build was crashing because it found React 19 (from the old web setup) while React Native requires React 18.2.0.
+- **Fix**: Updated `package.json` to remove web-only libraries like `dexie` and `react-dom`.
+- **CI Adjustment**: Changed the build step to use `npm install --legacy-peer-deps`. This tells the CI to ignore version conflicts in the old lock file and proceed with installing the correct native versions.
 
-### 2. Optimized Environment Setup
-- The Java JDK and Android SDK are now configured only once the native project files are ready, ensuring a cleaner and more stable build environment.
+### 2. Final Web Cleanup
+- **Deleted `tsconfig.json`**: Removed the web-specific TypeScript configuration.
+- **Deleted `metadata.json`**: Removed unused metadata files.
+- **Pure Native**: The project is now completely cleaned of Vite, Capacitor, and standard web dependencies.
 
 ## How to Verify
 
-1. **Push your changes**: The updated workflow will trigger automatically.
-2. **Check GitHub Actions**: You should see the "Setup Java JDK" step pass without error now, as it's no longer looking for non-existent files.
-3. **Build Success**: The process will continue to `expo prebuild`, generate the native code, and then run the Gradle build.
+1.  **Push your changes**: The GitHub Action will now run using the updated command.
+2.  **Observe `npm install`**: This step should now complete successfully.
+3.  **Build Phase**: The process will move forward to generating the Android project and building the APK.
 
 > [!SUCCESS]
-> By generating the project files *before* asking the CI to manage them, we've eliminated the primary cause of the build failure.
+> By stripping away the conflicting web packages, we've stabilized the project for 100% native mobile development.

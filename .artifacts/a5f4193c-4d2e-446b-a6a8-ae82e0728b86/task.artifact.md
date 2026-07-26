@@ -1,3 +1,4 @@
-- [x] Update `.github/workflows/build-apk.yml` to remove pre-emptive Gradle caching
-- [x] Reorder build steps to generate the `android` folder before Gradle setup
-- [ ] Verify build completion
+- [x] Remove web-only dependencies (dexie, react-dom) from `package.json`
+- [x] Update `build-apk.yml` to use `npm install --legacy-peer-deps`
+- [x] Remove remaining web root files (`metadata.json`, `tsconfig.json`)
+- [ ] Verify CI build on next push

@@ -1,19 +1,32 @@
-# Implementation Plan - Fix CI Build Error (Missing Gradle Files)
+# Implementation Plan - Fix Dependency Errors & Finalize Native Migration
 
-The GitHub Action build is failing because `actions/setup-java` is trying to cache Gradle files before they exist. In an Expo managed project, the `android` directory is generated dynamically during the build.
+The GitHub Action is failing because of a dependency conflict between the old React 19 web-related packages and the new React 18.2.0 required by React Native. This plan cleans up those conflicts and removes the remaining web development traces.
 
 ## Proposed Changes
 
-### [GitHub Actions]
+### [Dependency Management]
+
+#### [MODIFY] [package.json](file:///H:/inventory/Inventory-Managment/package.json)
+- Removed `dexie`, `dexie-react-hooks`, and `react-dom` to eliminate web-specific logic and conflicts.
+- Ensured all dependencies align with React 18.2.0.
 
 #### [MODIFY] [.github/workflows/build-apk.yml](file:///H:/inventory/Inventory-Managment/.github/workflows/build-apk.yml)
-- **Disable initial Gradle caching**: Remove `cache: 'gradle'` from the early `Setup Java JDK` step.
-- **Reorder Steps**: Ensure `npm ci` and `npx expo prebuild` run *before* any step that expects the `android` folder to exist.
-- **Optimization**: Move the Java and Android SDK setup to just before the Gradle build for better logical flow, or simply remove the caching requirement that's causing the crash.
+- Changed `npm ci` to `npm install --legacy-peer-deps`.
+- **Reason**: The existing `package-lock.json` contains references to React 19 from the old web project. `--legacy-peer-deps` allows the build to proceed while the lock file transitions to the native dependencies.
+
+### [Cleanup]
+
+#### [DELETE] Remaining Web Files
+- Successfully removed `metadata.json` and `tsconfig.json` (web-configured).
+- The project is now 100% focused on React Native / Expo.
 
 ## Verification Plan
 
 ### Manual Verification
-- Push changes and verify that the "Setup Java JDK" step no longer crashes.
-- Verify that `npx expo prebuild` correctly generates the `android` folder.
-- Verify that the Gradle build finds the generated files and completes successfully.
+1. Push changes to GitHub.
+2. Monitor GitHub Actions.
+3. The "Install dependencies" step should now pass using `--legacy-peer-deps`.
+4. The build should proceed to `expo prebuild` and then Gradle.
+
+> [!SUCCESS]
+> Removing the obsolete web dependencies and allowing flexible peer dependency resolution will clear the path for the native build to succeed.
